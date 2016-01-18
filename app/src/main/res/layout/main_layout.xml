@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#88228822"
+    android:id="@+id/systemFrame">
+
+    <wong.ian.augmentedrealitysystem20.SimpleScreen
+        android:id="@+id/my_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="242dp"
+        android:layout_gravity="center_horizontal|top">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:id="@+id/textArea"
+            android:background="@drawable/rounded_corners"
+            android:layout_gravity="center_horizontal|top"
+            android:gravity="center"
+            android:textColor="#000000"
+            android:visibility="invisible" />
+
+        <ListView
+            android:layout_width="267dp"
+            android:layout_height="130dp"
+            android:id="@+id/voiceChoicesList"
+            android:layout_gravity="center_horizontal|top"
+            android:background="@null"
+            android:visibility="invisible"
+            android:fadeScrollbars="false"
+            android:divider="@null" />
+    </LinearLayout>
+
+    <ProgressBar
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="210dp"
+        android:layout_height="15dp"
+        android:id="@+id/progressBar"
+        android:layout_gravity="center_horizontal|bottom" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="119dp"
+        android:layout_height="48dp"
+        android:layout_gravity="right|bottom">
+
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/pausePlayButton"
+            android:layout_gravity="right|bottom"
+            android:src="@mipmap/pause_button"
+            android:background="@null"
+            android:onClick="pausePlayScreen" />
+
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/imageButton"
+            android:layout_gravity="right|bottom"
+            android:src="@mipmap/voice_recorder"
+            android:background="@null"
+            android:onClick="listenForSpeech" />
+    </LinearLayout>
+
+</FrameLayout>

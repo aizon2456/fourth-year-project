@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Chemical Inventory System</string>
+    <string name="title_activity_login">Sign In</string>
+
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+</resources>

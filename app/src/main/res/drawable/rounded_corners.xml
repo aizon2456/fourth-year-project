@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    This makes a rectangular container with rounded corners.
+    Background: Blue
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF"/>
+    <padding android:left="4dp" android:top="1dp" android:right="4dp" android:bottom="1dp"/>
+    <corners android:radius="4dp" />
+</shape>
