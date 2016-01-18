@@ -5,7 +5,6 @@ import android.util.Log;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -15,15 +14,42 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 public class DatabaseConnection {
 
-    private static String username = "Ian";
+    private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/test/";
+    private final String username = "valid";
+
     private ChemicalContainer currentContainer = null;
 
     // Single-thread database executor to ensure database integrity
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
+        currentContainer = new ChemicalContainer(location, room, cabinet, chemicalName);
+        JSONObject response = modifyContainer(true);
+
+        if (response == null) {
+            currentContainer = null;
+            Log.e("CreateContainer", "The container could not be created.");
+            return false;
+        }
+
+        // TODO: handle the results in the UI
+        try {
+            Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + response.toString(2));
+
+            // if the response indicates a failure, determine why
+            if (!(boolean)response.get("success")) {
+                Log.e("DatabaseError-" + response.get("status"), (String) response.get("message"));
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     public JSONObject modifyContainer(boolean isAddOperation) {
         if (currentContainer == null) {
@@ -34,12 +60,14 @@ public class DatabaseConnection {
         JSONObject updateObj = new JSONObject();
 
         try {
-            updateObj.put("request", (isAddOperation) ? "ADD" : "REMOVE"); // add or remove
+            updateObj.put("requestType", (isAddOperation) ? "ADD" : "REMOVE"); // add or remove
             updateObj.put("username", username);
-            updateObj.put("Location", currentContainer.getLocation());
-            updateObj.put("Room", currentContainer.getRoom());
-            updateObj.put("Cabinet", currentContainer.getCabinet());
-            updateObj.put("Chemical", currentContainer.getChemicalName());
+            updateObj.put("location", currentContainer.getLocation());
+            updateObj.put("room", currentContainer.getRoom());
+            updateObj.put("cabinet", currentContainer.getCabinet());
+            updateObj.put("chemical", currentContainer.getChemicalName());
+
+            Log.d("JSONLOG-SentToDB", "JSON:\n" + updateObj.toString(2));
 
             return performDBQuery(updateObj, true);
 
@@ -57,40 +85,17 @@ public class DatabaseConnection {
         try {
             queryObj.put("chemical", chemicalName);
 
+            Log.d("JSONLOG-SentToDB", "JSON:\n" + queryObj.toString(2));
+
             JSONObject response = performDBQuery(queryObj, false);
 
-            Log.d("JSONLOG", response.toString(2));
+            Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + response.toString(2));
 
             // if the chemical exists, then go ahead
             if (("true").equals(response.getString("match"))) {
                 return true;
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
-        currentContainer = new ChemicalContainer(location, room, cabinet, chemicalName);
-        JSONObject response = modifyContainer(true);
-
-        if (response == null) {
-            currentContainer = null;
-            Log.e("CreateContainer", "The container could not be created.");
-            return false;
-        }
-
-        // TODO: handle the results in the UI
-        try {
-            Log.d("JSONLOG",response.toString(2));
-
-            // if the container already existed, then return false
-            if ("true".equals(response.get("match"))) {
-                return false;
-            }
-            return true;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -104,7 +109,7 @@ public class DatabaseConnection {
             public JSONObject call() throws Exception {
                 try {
                     Log.d("DBCall", "Performing a(n) " + ((isUpdate) ? "update" : "query") + " operation...");
-                    URL url = new URL("http://chemicaltracker.elasticbeanstalk.com/api/test/" + ((isUpdate) ? "update" : "query"));
+                    URL url = new URL(dbURL + ((isUpdate) ? "update" : "query"));
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestMethod("POST");
                     connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

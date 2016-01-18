@@ -318,6 +318,7 @@ public class MainActivity extends Activity {
             textOutput.setVisibility(View.INVISIBLE);
 
             recording = false;
+            identifier.executeSpecificCommand("reset");
         }
     }
 

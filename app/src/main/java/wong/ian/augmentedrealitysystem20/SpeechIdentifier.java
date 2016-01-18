@@ -69,7 +69,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                         return false;
                     }
                     Log.i("TextToSpeech", "Chemical " + currentChemical + " added to the database.");
-                    converter.speak("Added " + currentChemical + " successfully.", TextToSpeech.QUEUE_FLUSH, null);
+                    converter.speak("Added " + currentChemical + " to the database.", TextToSpeech.QUEUE_FLUSH, null);
                 }
                 else {
                     converter.speak("No container currently identified, please try again.", TextToSpeech.QUEUE_FLUSH, null);
@@ -105,7 +105,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             currentChemical = lcCommand;
 
             // TODO: database add new container (need to not hardcode the inputs)
-            if (!db.createContainer("Ministry of Love", "Room 101", "1", currentChemical)) {
+            if (!db.createContainer("valid", "valid", "valid", currentChemical)) {
                 Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
                 converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
                 responseType = null;
