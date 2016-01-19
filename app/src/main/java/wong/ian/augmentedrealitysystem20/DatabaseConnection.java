@@ -26,7 +26,16 @@ public class DatabaseConnection {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
-        currentContainer = new ChemicalContainer(location, room, cabinet, chemicalName);
+        // if the chemical was not validated ahead of time, the container will be null
+        if (currentContainer == null) {
+            return false;
+        }
+
+        currentContainer.setCabinet(cabinet);
+        currentContainer.setChemicalName(chemicalName);
+        currentContainer.setLocation(location);
+        currentContainer.setRoom(room);
+
         JSONObject response = modifyContainer(true);
 
         if (response == null) {
@@ -37,13 +46,16 @@ public class DatabaseConnection {
 
         // TODO: handle the results in the UI
         try {
-            Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + response.toString(2));
-
             // if the response indicates a failure, determine why
-            if (!(boolean)response.get("success")) {
-                Log.e("DatabaseError-" + response.get("status"), (String) response.get("message"));
+            if (!response.getBoolean("success")) {
+                Log.e("DatabaseError-" + response.getString("status"), response.getString("message"));
+                currentContainer = null;
                 return false;
             }
+
+            // otherwise log the information
+            Log.i("DatabaseResponse-" + response.getString("status"), response.getString("message"));
+
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -67,8 +79,6 @@ public class DatabaseConnection {
             updateObj.put("cabinet", currentContainer.getCabinet());
             updateObj.put("chemical", currentContainer.getChemicalName());
 
-            Log.d("JSONLOG-SentToDB", "JSON:\n" + updateObj.toString(2));
-
             return performDBQuery(updateObj, true);
 
         } catch (Exception e) {
@@ -85,14 +95,17 @@ public class DatabaseConnection {
         try {
             queryObj.put("chemical", chemicalName);
 
-            Log.d("JSONLOG-SentToDB", "JSON:\n" + queryObj.toString(2));
-
             JSONObject response = performDBQuery(queryObj, false);
 
-            Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + response.toString(2));
-
-            // if the chemical exists, then go ahead
+            // if the chemical exists, then set the current container
             if (("true").equals(response.getString("match"))) {
+                currentContainer = new ChemicalContainer(
+                        response.getInt("flammability"),
+                        response.getInt("health"),
+                        response.getInt("instability"),
+                        response.getString("notice"),
+                        response.getString("chemicalName")
+                );
                 return true;
             }
 
@@ -109,6 +122,8 @@ public class DatabaseConnection {
             public JSONObject call() throws Exception {
                 try {
                     Log.d("DBCall", "Performing a(n) " + ((isUpdate) ? "update" : "query") + " operation...");
+                    Log.d("JSONLOG-SentToDB", "JSON:\n" + body.toString(2));
+
                     URL url = new URL(dbURL + ((isUpdate) ? "update" : "query"));
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestMethod("POST");
@@ -133,8 +148,12 @@ public class DatabaseConnection {
 
                         reader.close();
 
+                        JSONObject result = new JSONObject(builder.toString());
+
+                        Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + result.toString(2));
+
                         // build the response JSONObject
-                        return new JSONObject(builder.toString());
+                        return result;
                     }
 
                 } catch (Exception e) {
@@ -159,4 +178,7 @@ public class DatabaseConnection {
         return null;
     }
 
+    public ChemicalContainer getCurrentContainer() {
+        return currentContainer;
+    }
 }

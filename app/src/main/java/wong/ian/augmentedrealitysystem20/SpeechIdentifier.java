@@ -43,8 +43,11 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             }
             // identify
             else if (regexCommand.contains("identify")) {
-                // TODO: use the DIP to get the name of the chemical, and set currentChemical
+                // TODO: use the DIP to get the name of the chemical
                 currentChemical = "water";
+
+                // double check that the chemical exists
+
                 converter.speak("Is your chemical: " + currentChemical + "?", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = true;
                 responseType = COMMANDS.IDENTIFY;
@@ -61,22 +64,14 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         if (responseType == COMMANDS.IDENTIFY) {
             if ("yes".equals(lcCommand)) {
                 if (currentChemical != null) {
-                    // TODO: database add new container (need to not hardcode the inputs)
-                    if (!db.createContainer("valid", "valid", "valid", currentChemical)) {
-                        Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
-                        converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
-                        responseType = null;
-                        return false;
-                    }
-                    Log.i("TextToSpeech", "Chemical " + currentChemical + " added to the database.");
-                    converter.speak("Added " + currentChemical + " to the database.", TextToSpeech.QUEUE_FLUSH, null);
+                    return performDBAdd(lcCommand);
                 }
                 else {
                     converter.speak("No container currently identified, please try again.", TextToSpeech.QUEUE_FLUSH, null);
                     keepListening = true;
+                    responseType = null;
+                    return true;
                 }
-                responseType = null;
-                return true;
             }
             else if ("no".equals(lcCommand)) {
                 converter.speak("Please say the name of the chemical.", TextToSpeech.QUEUE_FLUSH, null);
@@ -94,31 +89,34 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         // the user was asked for the proper chemical to be added to the database
         else if (responseType == COMMANDS.CHEMICAL_NAME) {
             currentChemical = null;
-
-            if (!db.queryChemical(lcCommand)) {
-                Log.i("TextToSpeech", "There is no such chemical " + lcCommand + " in the database.");
-                converter.speak("There is no such chemical " + lcCommand + " in the database. Please try again.", TextToSpeech.QUEUE_FLUSH, null);
-                keepListening = true;
-                return false;
-            }
-
-            currentChemical = lcCommand;
-
-            // TODO: database add new container (need to not hardcode the inputs)
-            if (!db.createContainer("valid", "valid", "valid", currentChemical)) {
-                Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
-                converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
-                responseType = null;
-                return false;
-            }
-            Log.i("TextToSpeech", "Chemical " + currentChemical + " added to the database.");
-            converter.speak("Added " + currentChemical + " successfully.", TextToSpeech.QUEUE_FLUSH, null);
-
-            responseType = null;
-            return true;
+            return performDBAdd(lcCommand);
         }
 
         return false;
+    }
+
+    private boolean performDBAdd(String lcCommand) {
+        if (!db.queryChemical(lcCommand)) {
+            Log.i("TextToSpeech", "There is no such chemical " + lcCommand + " in the database.");
+            converter.speak("There is no such chemical " + lcCommand + " in the database. Please try again.", TextToSpeech.QUEUE_FLUSH, null);
+            keepListening = true;
+            return false;
+        }
+
+        currentChemical = lcCommand;
+
+        // TODO: database add new container (need to not hardcode the inputs)
+        if (!db.createContainer("valid", "valid", "valid", currentChemical)) {
+            Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
+            converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
+            responseType = null;
+            return false;
+        }
+        Log.i("TextToSpeech", "Chemical " + currentChemical + " added to the database.");
+        converter.speak("Added " + currentChemical + " successfully.", TextToSpeech.QUEUE_FLUSH, null);
+
+        responseType = null;
+        return true;
     }
 
     @Override

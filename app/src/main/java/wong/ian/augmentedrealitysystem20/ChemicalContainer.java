@@ -13,10 +13,11 @@ public class ChemicalContainer {
     private int instability = 0;
     private String notice = "";
 
-    public ChemicalContainer(String location, String room, String cabinet, String chemicalName) {
-        this.location = location;
-        this.room = room;
-        this.cabinet = cabinet;
+    public ChemicalContainer(int flammability, int health, int instability, String notice, String chemicalName) {
+        this.flammability = flammability;
+        this.health = health;
+        this.instability = instability;
+        this.notice = notice;
         this.chemicalName = chemicalName;
     }
 
@@ -24,47 +25,47 @@ public class ChemicalContainer {
         return flammability;
     }
 
-    public void setFlammability(int flammability) {
-        this.flammability = flammability;
-    }
-
     public int getHealth() {
         return health;
-    }
-
-    public void setHealth(int health) {
-        this.health = health;
     }
 
     public int getInstability() {
         return instability;
     }
 
-    public void setInstability(int instability) {
-        this.instability = instability;
-    }
-
     public String getNotice() {
         return notice;
-    }
-
-    public void setNotice(String notice) {
-        this.notice = notice;
     }
 
     public String getLocation() {
         return location;
     }
 
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
     public String getRoom() {
         return room;
+    }
+
+    public void setRoom(String room) {
+        this.room = room;
     }
 
     public String getCabinet() {
         return cabinet;
     }
 
+    public void setCabinet(String cabinet) {
+        this.cabinet = cabinet;
+    }
+
     public String getChemicalName() {
         return chemicalName;
+    }
+
+    public void setChemicalName(String chemicalName) {
+        this.chemicalName= chemicalName;
     }
 }
