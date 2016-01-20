@@ -30,7 +30,8 @@ public class MainActivity extends Activity {
     private SimpleScreen screen = null;
     private Camera mCamera = null;
     private Preview mPreview = null;
-    private SyncInt syncVal = null;
+
+    private static SyncInt syncVal = null;
     private ProgressBar progressBar = null;
     private SpeechRecognizer sr = null;
     private boolean recording = false;
@@ -70,18 +71,11 @@ public class MainActivity extends Activity {
 
         syncVal = new SyncInt(100);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
-        /*progressBar = new ProgressBar(getBaseContext(), null, android.R.attr.progressBarStyleHorizontal);
-        FrameLayout.LayoutParams parameters = new FrameLayout.LayoutParams(display.getWidth(), FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        if (layout != null) {
-            layout.addView(progressBar, parameters);
-            progressBar.bringToFront();
-            Log.d("progressBar", "Successfully added progress bar.");
-        }*/
 
         screen = (SimpleScreen)findViewById(R.id.my_screen);
         screen.setOnTouchListener(new TouchListener());
 
-        // the thread for the progress bar
+        // the thread for displaying the progress of database calls
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -93,11 +87,7 @@ public class MainActivity extends Activity {
 
                         // check for <100
                         if (localValue < 100) {
-                            localValue++;
-                            syncVal.setValue(localValue);
                             progressBar.setProgress(localValue);
-                        }
-                        else {
                         }
                     }
 
@@ -368,6 +358,10 @@ public class MainActivity extends Activity {
         }
     }
 
+    public static SyncInt getSyncVal() {
+        return syncVal;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -410,9 +404,6 @@ public class MainActivity extends Activity {
             if (m.getAction() == MotionEvent.ACTION_DOWN || m.getAction() == MotionEvent.ACTION_MOVE) {
                 TextView output = (TextView) findViewById(R.id.textArea);
                 screen.handleScreenTouch(m, output);
-                synchronized (syncVal) {
-                    syncVal.setValue(0);
-                }
             }
             else if (m.getAction() == MotionEvent.ACTION_UP) {
                 screen.resetOffsets();
