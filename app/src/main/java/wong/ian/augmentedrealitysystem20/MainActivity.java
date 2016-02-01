@@ -75,24 +75,30 @@ public class MainActivity extends Activity {
         screen = (SimpleScreen)findViewById(R.id.my_screen);
         screen.setOnTouchListener(new TouchListener());
 
-        // the thread for displaying the progress of database calls
+        // the thread for displaying the progress of digital image processing
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
                     // thread synchronization
-                    int localValue;
+                    int syncValue;
                     synchronized (syncVal) {
-                        localValue = syncVal.getValue();
+                        syncValue = syncVal.getValue();
 
-                        // check for <100
-                        if (localValue < 100) {
-                            progressBar.setProgress(localValue);
+                        int progressBarValue = progressBar.getProgress();
+
+                        // check for 0<=x<=100 (valid percentages)
+                        if (syncValue != progressBarValue && syncValue > 0 && syncValue <= 100) {
+                            Log.d("sync", syncValue + ", " + progressBarValue);
+                            if (progressBarValue >= 100) {
+                                progressBarValue = -1;
+                            }
+                            progressBar.setProgress(progressBarValue + 1);
                         }
                     }
 
                     // update the UI in the main thread
-                    if (localValue < 100) {
+                    if (syncValue < 100) {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {

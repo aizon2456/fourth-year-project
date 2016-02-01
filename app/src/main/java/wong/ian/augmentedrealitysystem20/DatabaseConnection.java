@@ -23,7 +23,11 @@ public class DatabaseConnection {
     private ChemicalContainer currentContainer = null;
 
     // Single-thread database executor to ensure database integrity
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executor = null;
+
+    public DatabaseConnection() {
+        executor = Executors.newSingleThreadExecutor();
+    }
 
     public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
         // if the chemical was not validated ahead of time, the container will be null
@@ -41,6 +45,7 @@ public class DatabaseConnection {
         if (response == null) {
             currentContainer = null;
             Log.e("CreateContainer", "The container could not be created.");
+
             return false;
         }
 
@@ -90,6 +95,7 @@ public class DatabaseConnection {
 
     // checks if a chemical name exists
     public boolean queryChemical(String chemicalName) {
+
         JSONObject queryObj = new JSONObject();
 
         try {
@@ -99,12 +105,13 @@ public class DatabaseConnection {
 
             // if the chemical exists, then set the current container
             if (("true").equals(response.getString("match"))) {
+                JSONObject properties = response.getJSONObject("properties");
                 currentContainer = new ChemicalContainer(
-                        response.getInt("flammability"),
-                        response.getInt("health"),
-                        response.getInt("instability"),
-                        response.getString("notice"),
-                        response.getString("chemicalName")
+                        properties.getInt("flammability"),
+                        properties.getInt("health"),
+                        properties.getInt("instability"),
+                        properties.getString("notice"),
+                        response.getString("chemical")
                 );
                 return true;
             }

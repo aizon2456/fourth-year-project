@@ -10,12 +10,15 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
 
     private DatabaseConnection db = null;
     private TextToSpeech converter = null;
-    private String currentChemical = null;
     private COMMANDS responseType = null;
     private boolean keepListening = false;
+    private String currentChemical = null;
+    private String currentLocation = null;
+    private String currentRoom = null;
+    private String currentCabinet = null;
 
     public enum COMMANDS {
-        IDENTIFY, CHEMICAL_NAME
+        IDENTIFY, CHEMICAL_NAME, LOCATION, ROOM, CABINET
     }
 
     public SpeechIdentifier(Context context, DatabaseConnection db) {
@@ -30,9 +33,9 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
 
             // always check if the word is cancel or reset, and if so, reset everything
             if ("cancel".equals(regexCommand) || "reset".equals(regexCommand)) {
-                converter.speak("Voice commands deactivated.", TextToSpeech.QUEUE_FLUSH, null);
-                responseType = null;
+                converter.speak("Voice off.", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = false;
+                responseType = null;
                 return true;
             }
 
@@ -46,11 +49,33 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 // TODO: use the DIP to get the name of the chemical
                 currentChemical = "water";
 
-                // double check that the chemical exists
-
                 converter.speak("Is your chemical: " + currentChemical + "?", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = true;
                 responseType = COMMANDS.IDENTIFY;
+                return true;
+            }
+            // location
+            else if (regexCommand.contains("location")) {
+                // allow the user to say the location name
+                converter.speak("Please say your location now.", TextToSpeech.QUEUE_FLUSH, null);
+                keepListening = true;
+                responseType = COMMANDS.LOCATION;
+                return true;
+            }
+            // room
+            else if (regexCommand.contains("room")) {
+                // allow the user to say the room name
+                converter.speak("Please say the room name now.", TextToSpeech.QUEUE_FLUSH, null);
+                keepListening = true;
+                responseType = COMMANDS.ROOM;
+                return true;
+            }
+            // cabinet
+            else if (regexCommand.contains("cabinet")) {
+                // allow the user to say the cabinet name
+                converter.speak("Please say the cabinet name now.", TextToSpeech.QUEUE_FLUSH, null);
+                keepListening = true;
+                responseType = COMMANDS.CABINET;
                 return true;
             }
         }
@@ -64,7 +89,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         if (responseType == COMMANDS.IDENTIFY) {
             if ("yes".equals(lcCommand)) {
                 if (currentChemical != null) {
-                    return performDBAdd(lcCommand);
+                    return performDBAdd(currentChemical);
                 }
                 else {
                     converter.speak("No container currently identified, please try again.", TextToSpeech.QUEUE_FLUSH, null);
@@ -88,8 +113,40 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         }
         // the user was asked for the proper chemical to be added to the database
         else if (responseType == COMMANDS.CHEMICAL_NAME) {
-            currentChemical = null;
             return performDBAdd(lcCommand);
+        }
+        // the user was asked for the current location
+        else if (responseType == COMMANDS.LOCATION) {
+            if (lcCommand != null) {
+                currentLocation = lcCommand;
+                responseType = null;
+                return true;
+            }
+            converter.speak("Your location could not be ascertained, please try again.", TextToSpeech.QUEUE_FLUSH, null);
+            keepListening = true;
+            return false;
+        }
+        // the user was asked for the current room
+        else if (responseType == COMMANDS.ROOM) {
+            if (lcCommand != null) {
+                currentRoom = lcCommand;
+                responseType = null;
+                return true;
+            }
+            converter.speak("The room name could not be ascertained, please try again.", TextToSpeech.QUEUE_FLUSH, null);
+            keepListening = true;
+            return true;
+        }
+        // the user was asked for the current location
+        else if (responseType == COMMANDS.CABINET) {
+            if (lcCommand != null) {
+                currentCabinet = lcCommand;
+                responseType = null;
+                return true;
+            }
+            converter.speak("The cabinet name could not be ascertained, please try again.", TextToSpeech.QUEUE_FLUSH, null);
+            keepListening = true;
+            return true;
         }
 
         return false;
@@ -98,15 +155,17 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
     private boolean performDBAdd(String lcCommand) {
         if (!db.queryChemical(lcCommand)) {
             Log.i("TextToSpeech", "There is no such chemical " + lcCommand + " in the database.");
-            converter.speak("There is no such chemical " + lcCommand + " in the database. Please try again.", TextToSpeech.QUEUE_FLUSH, null);
+            converter.speak("There is no chemical " + lcCommand + " in the database. Please say the name of the chemical you wish to add.", TextToSpeech.QUEUE_FLUSH, null);
             keepListening = true;
+            responseType = COMMANDS.CHEMICAL_NAME;
+            currentChemical = null;
             return false;
         }
 
         currentChemical = lcCommand;
 
         // TODO: database add new container (need to not hardcode the inputs)
-        if (!db.createContainer("valid", "valid", "valid", currentChemical)) {
+        if (!db.createContainer(currentLocation, currentRoom, currentCabinet, currentChemical)) {
             Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
             converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
             responseType = null;
