@@ -64,7 +64,7 @@ public class LoginActivity extends Activity {
         // TODO: check the username and password here
         DatabaseConnection db = new DatabaseConnection();
 
-        Intent redirect = new Intent(getApplicationContext(), MainActivity.class);
+        Intent redirect = new Intent(getApplicationContext(), SetupActivity.class);
         redirect.putExtra("user", username);
         redirect.putExtra("database", db);
         startActivity(redirect);

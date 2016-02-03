@@ -49,12 +49,6 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.main_layout);
 
-        // display the valid login notification
-        AlertDialog loginSuccess = new AlertDialog.Builder(this).create();
-        loginSuccess.setTitle("Success!");
-        loginSuccess.setMessage(getIntent().getStringExtra("user") + " logged in successfully!");
-        loginSuccess.show();
-
         database = (DatabaseConnection) getIntent().getSerializableExtra("database");
         identifier = new SpeechIdentifier(this, database);
 
@@ -372,12 +366,17 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         screen.onPause();
+        releaseCameraAndPreview();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         screen.onResume();
+        if (safeCameraOpen()) {
+            Log.d(getString(R.string.app_name), " re-opened Camera successfully!");
+            mPreview.setCamera(mCamera);
+        }
     }
 
     // disables the back button
