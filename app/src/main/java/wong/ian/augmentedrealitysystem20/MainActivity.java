@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
         loginSuccess.setMessage(getIntent().getStringExtra("user") + " logged in successfully!");
         loginSuccess.show();
 
-        database = new DatabaseConnection();
+        database = (DatabaseConnection) getIntent().getSerializableExtra("database");
         identifier = new SpeechIdentifier(this, database);
 
         FrameLayout layout = (FrameLayout) findViewById(R.id.systemFrame);

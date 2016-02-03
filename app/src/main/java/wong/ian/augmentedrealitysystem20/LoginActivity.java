@@ -36,12 +36,10 @@ public class LoginActivity extends Activity {
     }
 
     public void doLogin(View view) {
-        InputMethodManager inputManager =
-                (InputMethodManager) getApplicationContext().
-                        getSystemService(Context.INPUT_METHOD_SERVICE);
-        inputManager.hideSoftInputFromWindow(
-                findViewById(R.id.password_text).getWindowToken(),
-                InputMethodManager.HIDE_NOT_ALWAYS);
+        InputMethodManager inputManager = (InputMethodManager) getApplicationContext().
+                getSystemService(Context.INPUT_METHOD_SERVICE);
+        inputManager.hideSoftInputFromWindow(findViewById(R.id.password_text).getWindowToken(),
+                                             InputMethodManager.HIDE_NOT_ALWAYS);
 
         String username = ((EditText)findViewById(R.id.input_text)).getText().toString();
         String password = ((EditText)findViewById(R.id.password_text)).getText().toString();
@@ -64,9 +62,11 @@ public class LoginActivity extends Activity {
         }
 
         // TODO: check the username and password here
+        DatabaseConnection db = new DatabaseConnection();
 
         Intent redirect = new Intent(getApplicationContext(), MainActivity.class);
         redirect.putExtra("user", username);
+        redirect.putExtra("database", db);
         startActivity(redirect);
     }
 }

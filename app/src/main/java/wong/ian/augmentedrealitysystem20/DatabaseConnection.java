@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -15,7 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class DatabaseConnection {
+public class DatabaseConnection implements Serializable {
 
     private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/test/";
     private final String username = "valid";
@@ -104,7 +105,7 @@ public class DatabaseConnection {
             JSONObject response = performDBQuery(queryObj, false);
 
             // if the chemical exists, then set the current container
-            if (("true").equals(response.getString("match"))) {
+            if (response.getBoolean("match")) {
                 JSONObject properties = response.getJSONObject("properties");
                 currentContainer = new ChemicalContainer(
                         properties.getInt("flammability"),
