@@ -5,7 +5,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -17,6 +20,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class LoginActivity extends Activity {
+
+    private final String TOKEN = "token";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,14 +51,14 @@ public class LoginActivity extends Activity {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
-        if (username == null || username.isEmpty()) {
+        if (username.isEmpty()) {
             final AlertDialog warning = builder.create();
             warning.setTitle("Empty Username");
             warning.setMessage("You must provide a username.");
             warning.show();
             return;
         }
-        else if (password == null || password.isEmpty()) {
+        else if (password.isEmpty()) {
             final AlertDialog warning = builder.create();
             warning.setTitle("Empty Password");
             warning.setMessage("You must provide a password.");
@@ -61,12 +66,23 @@ public class LoginActivity extends Activity {
             return;
         }
 
-        // TODO: check the username and password here
-        DatabaseConnection db = new DatabaseConnection();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        if (sp.contains(TOKEN)) {
+            Log.i("TokenExists", "Already logged in, continuing...");
+        }
+        else {
+            // check the username and password
+            DatabaseConnection db = DatabaseConnection.getInstance();
+            // TODO: get the result
+            String result = "SOMETHING";
+
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putString(TOKEN, result);
+        }
+
 
         Intent redirect = new Intent(getApplicationContext(), SetupActivity.class);
         redirect.putExtra("user", username);
-        redirect.putExtra("database", db);
         startActivity(redirect);
     }
 }

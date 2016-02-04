@@ -7,7 +7,6 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -16,18 +15,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class DatabaseConnection implements Serializable {
+public class DatabaseConnection {
+
+    private static DatabaseConnection singleInstance = null;
 
     private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/test/";
     private final String username = "valid";
 
-    private ChemicalContainer currentContainer = null;
+    private transient ChemicalContainer currentContainer = null;
 
     // Single-thread database executor to ensure database integrity
     private ExecutorService executor = null;
 
-    public DatabaseConnection() {
+    private DatabaseConnection() {
         executor = Executors.newSingleThreadExecutor();
+    }
+
+    public static DatabaseConnection getInstance() {
+        if (singleInstance != null) {
+            return singleInstance;
+        }
+        return new DatabaseConnection();
     }
 
     public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
@@ -105,7 +113,7 @@ public class DatabaseConnection implements Serializable {
             JSONObject response = performDBQuery(queryObj, false);
 
             // if the chemical exists, then set the current container
-            if (response.getBoolean("match")) {
+            if (response != null && response.getBoolean("match")) {
                 JSONObject properties = response.getJSONObject("properties");
                 currentContainer = new ChemicalContainer(
                         properties.getInt("flammability"),
