@@ -80,7 +80,6 @@ public class LoginActivity extends Activity {
             editor.putString(TOKEN, result);
         }
 
-
         Intent redirect = new Intent(getApplicationContext(), SetupActivity.class);
         redirect.putExtra("user", username);
         startActivity(redirect);
