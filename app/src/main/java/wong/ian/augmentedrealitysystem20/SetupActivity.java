@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -85,12 +83,32 @@ public class SetupActivity extends Activity {
                     roomSpinner.setAdapter(new ArrayAdapter<>(
                             view.getContext(), android.R.layout.simple_spinner_item, rooms
                     ));
+
+                    roomSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                            String item = parent.getItemAtPosition(position).toString();
+                            EditText roomText = (EditText) findViewById(R.id.room_input);
+
+                            // check if the item is ADD_NEW
+                            if (ADD_NEW.equals(item)) {
+                                roomText.setVisibility(View.VISIBLE);
+                                locationNew = true;
+                            }
+                            else {
+                                roomText.setVisibility(View.INVISIBLE);
+                                locationNew = false;
+                            }
+                        }
+
+                        @Override
+                        public void onNothingSelected(AdapterView<?> parent) {}
+                    });
                 }
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
 
 
