@@ -73,11 +73,16 @@ public class LoginActivity extends Activity {
         else {
             // check the username and password
             DatabaseConnection db = DatabaseConnection.getInstance();
-            // TODO: get the result
-            String result = "SOMETHING";
 
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putString(TOKEN, result);
+            // check the result
+            String result = db.performLogin(username, password);
+            if (!DatabaseConnection.SUCCESS.equals(result)) {
+                final AlertDialog warning = builder.create();
+                warning.setTitle("Wrong Login");
+                warning.setMessage(result);
+                warning.show();
+                return;
+            }
         }
 
         Intent redirect = new Intent(getApplicationContext(), SetupActivity.class);

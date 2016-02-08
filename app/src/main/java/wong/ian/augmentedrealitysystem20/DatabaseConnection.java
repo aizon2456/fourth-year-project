@@ -1,5 +1,6 @@
 package wong.ian.augmentedrealitysystem20;
 
+import android.util.Base64;
 import android.util.Log;
 
 import org.json.JSONObject;
@@ -19,8 +20,9 @@ public class DatabaseConnection {
 
     private static DatabaseConnection singleInstance = null;
 
-    private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/test/";
-    private final String username = "valid";
+    public static final String SUCCESS = "success";
+    private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/";
+    private String loginProperty = null;
 
     private transient ChemicalContainer currentContainer = null;
 
@@ -43,6 +45,8 @@ public class DatabaseConnection {
         if (currentContainer == null) {
             return false;
         }
+
+        Log.i("something", cabinet + "," + chemicalName + "," + location + "," + room);
 
         currentContainer.setCabinet(cabinet);
         currentContainer.setChemicalName(chemicalName);
@@ -87,7 +91,6 @@ public class DatabaseConnection {
 
         try {
             updateObj.put("requestType", (isAddOperation) ? "ADD" : "REMOVE"); // add or remove
-            updateObj.put("username", username);
             updateObj.put("location", currentContainer.getLocation());
             updateObj.put("room", currentContainer.getRoom());
             updateObj.put("cabinet", currentContainer.getCabinet());
@@ -131,6 +134,57 @@ public class DatabaseConnection {
         return false;
     }
 
+    public String performLogin(final String username, final String password) {
+        // sets up a callable DB thread
+        final String auth = "Basic " + Base64.encodeToString((username + password).getBytes(), Base64.NO_WRAP);
+        Callable<String> activeDBTask = new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                try {
+
+                    URL url = new URL(dbURL + "testLogin");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                    connection.setRequestProperty("Authorization", auth);
+
+                    OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+
+                    writer.write("");
+
+                    writer.flush();
+
+                    // get the response from the query if the database responded
+                    if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        return SUCCESS;
+                    }
+
+                    return "Invalid credentials, please try again.";
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                return null;
+            }
+        };
+
+        // setup the future return for the callable
+        Future<String> future = executor.submit(activeDBTask);
+
+        try {
+            // if true returned, save the value
+            if (future.get() != null) {
+                loginProperty = auth;
+                return future.get();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "There was an error contacting the database.";
+    }
+
     private JSONObject performDBQuery(final JSONObject body, final boolean isUpdate) {
         // sets up a callable DB thread
         Callable<JSONObject> activeDBTask = new Callable<JSONObject>() {
@@ -144,6 +198,7 @@ public class DatabaseConnection {
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestMethod("POST");
                     connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                    connection.setRequestProperty("Authorization", loginProperty);
 
                     OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
 

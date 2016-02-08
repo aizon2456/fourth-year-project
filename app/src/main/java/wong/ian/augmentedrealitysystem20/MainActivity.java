@@ -36,7 +36,6 @@ public class MainActivity extends Activity {
     private SpeechRecognizer sr = null;
     private boolean recording = false;
     private boolean screenActive = true;
-    private DatabaseConnection database = null;
     private SpeechIdentifier identifier = null;
 
     @Override
@@ -49,8 +48,7 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.main_layout);
 
-        database = (DatabaseConnection) getIntent().getSerializableExtra("database");
-        identifier = new SpeechIdentifier(this, database);
+        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"));
 
         FrameLayout layout = (FrameLayout) findViewById(R.id.systemFrame);
         if (layout != null) {

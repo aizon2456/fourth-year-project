@@ -116,8 +116,8 @@ public class SetupActivity extends Activity {
 
         Intent redirect = new Intent(getApplicationContext(), MainActivity.class);
         redirect.putExtra("user", username);
-        redirect.putExtra("token", username);
-        redirect.putExtra("user", username);
+        redirect.putExtra("location", location);
+        redirect.putExtra("room", room);
         startActivity(redirect);
     }
 }

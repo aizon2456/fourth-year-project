@@ -21,8 +21,10 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         IDENTIFY, CHEMICAL_NAME, LOCATION, ROOM, CABINET
     }
 
-    public SpeechIdentifier(Context context, DatabaseConnection db) {
-        this.db = db;
+    public SpeechIdentifier(Context context, String location, String room) {
+        currentLocation = location;
+        currentRoom = room;
+        db = DatabaseConnection.getInstance();
         converter = new TextToSpeech(context, this);
     }
 
@@ -46,6 +48,12 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             }
             // identify
             else if (regexCommand.contains("identify")) {
+                // check that a cabinet has been identified
+                if (currentCabinet == null) {
+                    converter.speak("No cabinet is currently open. Please identify a cabinet before adding chemicals.", TextToSpeech.QUEUE_FLUSH, null);
+                    return true;
+                }
+
                 // TODO: use the DIP to get the name of the chemical
                 currentChemical = "water";
 
