@@ -42,12 +42,14 @@ public class MainActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // set flags to ensure that the application is fullscreen and active at all times
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
 
         setContentView(R.layout.main_layout);
 
+        // create the speech identifier given a particular location and room
         identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"));
 
         FrameLayout layout = (FrameLayout) findViewById(R.id.systemFrame);

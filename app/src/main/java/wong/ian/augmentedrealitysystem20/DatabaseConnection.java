@@ -16,23 +16,29 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+/**
+ * Provides the internal database calls.
+ */
 public class DatabaseConnection {
 
     private static DatabaseConnection singleInstance = null;
 
-    public static final String SUCCESS = "success";
+    // the URL for contacting the database
     private final String dbURL = "http://chemicaltracker.elasticbeanstalk.com/api/";
+
+    public static final String SUCCESS = "success";
     private String loginProperty = null;
 
     private transient ChemicalContainer currentContainer = null;
 
-    // Single-thread database executor to ensure database integrity
+    // Single-thread, singleton database executor to ensure database integrity
     private ExecutorService executor = null;
 
     private DatabaseConnection() {
         executor = Executors.newSingleThreadExecutor();
     }
 
+    // singleton accessor
     public static DatabaseConnection getInstance() {
         if (singleInstance != null) {
             return singleInstance;
@@ -40,13 +46,19 @@ public class DatabaseConnection {
         return new DatabaseConnection();
     }
 
+    /**
+     * Create a new Container based on a location, room, cabinet, and chemical name.
+     * @param location
+     * @param room
+     * @param cabinet
+     * @param chemicalName
+     * @return
+     */
     public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
         // if the chemical was not validated ahead of time, the container will be null
         if (currentContainer == null) {
             return false;
         }
-
-        Log.i("something", cabinet + "," + chemicalName + "," + location + "," + room);
 
         currentContainer.setCabinet(cabinet);
         currentContainer.setChemicalName(chemicalName);
@@ -55,6 +67,7 @@ public class DatabaseConnection {
 
         JSONObject response = modifyContainer(true);
 
+        // if no response was acquired, then log an error
         if (response == null) {
             currentContainer = null;
             Log.e("CreateContainer", "The container could not be created.");
@@ -62,9 +75,9 @@ public class DatabaseConnection {
             return false;
         }
 
-        // TODO: handle the results in the UI
+        // handle the results in the UI
         try {
-            // if the response indicates a failure, determine why
+            // if the response indicates a failure
             if (!response.getBoolean("success")) {
                 Log.e("DatabaseError-" + response.getString("status"), response.getString("message"));
                 currentContainer = null;
@@ -72,15 +85,21 @@ public class DatabaseConnection {
             }
 
             // otherwise log the information
-            Log.i("DatabaseResponse-" + response.getString("status"), response.getString("message"));
+            Log.d("DatabaseResponse-" + response.getString("status"), response.getString("message"));
 
             return true;
+
         } catch (Exception e) {
             e.printStackTrace();
         }
         return false;
     }
 
+    /**
+     * Creates the JSON to modify or add an existing container in the database.
+     * @param isAddOperation True if the operation is Add, False if Remove
+     * @return The result of the operation to parse
+     */
     public JSONObject modifyContainer(boolean isAddOperation) {
         if (currentContainer == null) {
             Log.i("DatabaseAccess", "The currently identified container is empty.");
@@ -105,7 +124,12 @@ public class DatabaseConnection {
         return null;
     }
 
-    // checks if a chemical name exists
+    /**
+     * Checks if a chemical name exists, and sets the chemical properties of the
+     * current chemical if so.
+     * @param chemicalName
+     * @return True if the chemical exists in the database.
+     */
     public boolean queryChemical(String chemicalName) {
 
         JSONObject queryObj = new JSONObject();
@@ -134,81 +158,37 @@ public class DatabaseConnection {
         return false;
     }
 
-    public String performLogin(final String username, final String password) {
-        // sets up a callable DB thread
-        final String auth = "Basic " + Base64.encodeToString((username + password).getBytes(), Base64.NO_WRAP);
-        Callable<String> activeDBTask = new Callable<String>() {
-            @Override
-            public String call() throws Exception {
-                try {
-
-                    URL url = new URL(dbURL + "testLogin");
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestMethod("POST");
-                    connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                    connection.setRequestProperty("Authorization", auth);
-
-                    OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-
-                    writer.write("");
-
-                    writer.flush();
-
-                    // get the response from the query if the database responded
-                    if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                        return SUCCESS;
-                    }
-
-                    return "Invalid credentials, please try again.";
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-                return null;
-            }
-        };
-
-        // setup the future return for the callable
-        Future<String> future = executor.submit(activeDBTask);
-
-        try {
-            // if true returned, save the value
-            if (future.get() != null) {
-                loginProperty = auth;
-                return future.get();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return "There was an error contacting the database.";
-    }
-
+    /**
+     * Execute the query given by the JSONObject parameter.
+     * @param body The JSONObject used to query or update
+     * @param isUpdate True if an update, False if a query operation
+     * @return The response to the query from the database.
+     */
     private JSONObject performDBQuery(final JSONObject body, final boolean isUpdate) {
         // sets up a callable DB thread
         Callable<JSONObject> activeDBTask = new Callable<JSONObject>() {
             @Override
             public JSONObject call() throws Exception {
                 try {
-                    Log.d("DBCall", "Performing a(n) " + ((isUpdate) ? "update" : "query") + " operation...");
+                    Log.d("DBCall", "Performing " + ((isUpdate) ? "an update" : "a query") + " operation...");
                     Log.d("JSONLOG-SentToDB", "JSON:\n" + body.toString(2));
 
+                    // create the URL from the hardcoded URL
                     URL url = new URL(dbURL + ((isUpdate) ? "update" : "query"));
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestMethod("POST");
                     connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                     connection.setRequestProperty("Authorization", loginProperty);
 
+                    // send the JSONObject to the database
                     OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
-
                     writer.write(body.toString());
-
                     writer.flush();
 
                     // get the response from the query if the database responded
                     if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), Charset.defaultCharset()));
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(
+                                connection.getInputStream(), Charset.defaultCharset()));
 
                         StringBuilder builder = new StringBuilder();
 
@@ -219,15 +199,15 @@ public class DatabaseConnection {
 
                         reader.close();
 
+                        // build the response string to a JSONObject
                         JSONObject result = new JSONObject(builder.toString());
 
                         Log.d("JSONLOG-ReplyFromDB", "JSON:\n" + result.toString(2));
 
-                        // build the response JSONObject
                         return result;
                     }
 
-                } catch (Exception e) {
+                } catch (Exception e) { // can catch timeouts
                     e.printStackTrace();
                 }
 
@@ -247,6 +227,65 @@ public class DatabaseConnection {
         }
 
         return null;
+    }
+
+    /**
+     * Execute a login query, after which the user can access the system if successful.
+     * @param username
+     * @param password
+     * @return
+     */
+    public String performLogin(final String username, final String password) {
+        // sets up a callable DB thread
+        final String auth = "Basic " + Base64.encodeToString((username + ":" + password).getBytes(), Base64.NO_WRAP);
+        Callable<String> activeDBTask = new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                try {
+                    // setup the hardcoded URL
+                    URL url = new URL(dbURL + "authorize");
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                    connection.setRequestProperty("Authorization", auth);
+
+                    // no body is required in order to get a response, but output needs to be written
+                    OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
+                    writer.write("");
+                    writer.flush();
+
+                    // get the response from the query if the database responded
+                    if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        Log.i("Login", "Login for " + username + " was successful!");
+                        return SUCCESS;
+                    }
+
+                    Log.i("Login", "Login for " + username + " failed!\n");
+                    return "Invalid credentials, please try again.";
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                // null indicates an error occurred during the process
+                return null;
+            }
+        };
+
+        // setup the future return for the callable
+        Future<String> future = executor.submit(activeDBTask);
+
+        try {
+            // if true returned, save the value
+            if (future.get() != null) {
+                loginProperty = auth;
+                return future.get();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "There was an error contacting the database.";
     }
 
     public ChemicalContainer getCurrentContainer() {

@@ -1,7 +1,7 @@
 package wong.ian.augmentedrealitysystem20;
 
 /**
- * Created by Phelius on 12/30/2015.
+ * Contains all the information regarding a chemical container.
  */
 public class ChemicalContainer {
     private String location = "";
@@ -13,6 +13,14 @@ public class ChemicalContainer {
     private int instability = 0;
     private String notice = "";
 
+    /**
+     * Creates a chemical container.
+     * @param flammability
+     * @param health
+     * @param instability
+     * @param notice Information pertinent to the chemical and the user.
+     * @param chemicalName
+     */
     public ChemicalContainer(int flammability, int health, int instability, String notice, String chemicalName) {
         this.flammability = flammability;
         this.health = health;

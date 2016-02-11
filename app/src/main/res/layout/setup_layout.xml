@@ -7,7 +7,6 @@
     tools:context="wong.ian.augmentedrealitysystem20.SetupActivity"
     android:background="@android:color/holo_orange_light">
 
-
     <Spinner
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,19 +16,22 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
         android:contextClickable="false"
-        android:background="@android:color/white"
-        android:layout_alignEnd="@+id/go_button" />
+        android:background="@drawable/spinner_text"
+        android:popupBackground="@drawable/spinner_dropdown_text"
+        android:overlapAnchor="false"
+        android:layout_toStartOf="@+id/go_button" />
 
     <Spinner
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/room_spinner"
         android:spinnerMode="dropdown"
-        android:layout_below="@+id/location_input"
-        android:layout_alignParentStart="true"
         android:visibility="invisible"
-        android:background="@android:color/white"
-        android:layout_toStartOf="@+id/location_input" />
+        android:background="@drawable/spinner_text"
+        android:popupBackground="@drawable/spinner_dropdown_text"
+        android:overlapAnchor="false"
+        android:layout_alignTop="@+id/location_spinner"
+        android:layout_toEndOf="@+id/location_spinner" />
 
     <EditText
         android:layout_width="match_parent"
@@ -38,10 +40,9 @@
         android:inputType="text"
         android:visibility="invisible"
         android:hint="Location..."
-        android:layout_alignTop="@+id/location_spinner"
-        android:layout_alignParentEnd="true"
-        android:layout_toEndOf="@+id/location_spinner"
-        android:layout_alignBottom="@+id/location_spinner" />
+        android:layout_below="@+id/location_spinner"
+        android:layout_alignParentStart="true"
+        android:layout_toStartOf="@+id/go_button" />
 
     <EditText
         android:layout_width="match_parent"
@@ -50,9 +51,8 @@
         android:inputType="text"
         android:visibility="invisible"
         android:hint="Room..."
-        android:layout_below="@+id/location_spinner"
-        android:layout_toEndOf="@+id/room_spinner"
-        android:layout_alignBottom="@+id/room_spinner" />
+        android:layout_alignTop="@+id/location_input"
+        android:layout_toEndOf="@+id/location_input" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -69,21 +69,16 @@
 
     <Button
         style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
+        android:layout_width="80dp"
         android:layout_height="wrap_content"
         android:text="Go"
         android:id="@+id/go_button"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:onClick="startChemicalTracking"
-        android:nestedScrollingEnabled="false" />
+        android:nestedScrollingEnabled="false"
+        android:textSize="30dp"
+        android:background="@android:color/holo_blue_dark"
+        android:textColor="@android:color/white" />
 
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/room_display"
-        android:layout_below="@+id/room_input"
-        android:layout_alignParentStart="true"
-        android:layout_alignEnd="@+id/room_input"
-        android:layout_above="@+id/go_button" />
 </RelativeLayout>

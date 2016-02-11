@@ -52,7 +52,7 @@ public class SetupActivity extends Activity {
         locations.add(ADD_NEW);
 
         locationSpinner.setAdapter(new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, locations
+                this, R.layout.spinner_textbox, locations
         ));
 
         locationSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -81,7 +81,7 @@ public class SetupActivity extends Activity {
                     rooms.add(ADD_NEW);
 
                     roomSpinner.setAdapter(new ArrayAdapter<>(
-                            view.getContext(), android.R.layout.simple_spinner_item, rooms
+                            view.getContext(), R.layout.spinner_textbox, rooms
                     ));
 
                     roomSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -93,11 +93,11 @@ public class SetupActivity extends Activity {
                             // check if the item is ADD_NEW
                             if (ADD_NEW.equals(item)) {
                                 roomText.setVisibility(View.VISIBLE);
-                                locationNew = true;
+                                roomNew = true;
                             }
                             else {
                                 roomText.setVisibility(View.INVISIBLE);
-                                locationNew = false;
+                                roomNew = false;
                             }
                         }
 
@@ -121,18 +121,32 @@ public class SetupActivity extends Activity {
     }
 
     public void startChemicalTracking(View view) {
-        String location = "abc";
-        String room = "def";
+        String location = (locationNew) ?
+                ((EditText) findViewById(R.id.location_input)).getText().toString() :
+                ((Spinner) findViewById(R.id.location_spinner)).getSelectedItem().toString();
+        String room = (roomNew || locationNew) ?
+                ((EditText) findViewById(R.id.room_input)).getText().toString() :
+                ((Spinner) findViewById(R.id.room_spinner)).getSelectedItem().toString();
 
-        // TODO: set dialog underneath the respective field to indicate error
-        if (room == null || room.length() == 0) {
+        // if the fields are not properly filled, notify the user
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        if (location == null || location.length() == 0) {
+            final AlertDialog warning = builder.create();
+            warning.setTitle("Error - Location");
+            warning.setMessage("Please enter a valid location.");
+            warning.show();
             return;
         }
-        else if (location == null || location.length() == 0) {
+        else if (room == null || room.length() == 0) {
+            final AlertDialog warning = builder.create();
+            warning.setTitle("Error - Room");
+            warning.setMessage("Please enter a valid room.");
+            warning.show();
             return;
         }
 
         Intent redirect = new Intent(getApplicationContext(), MainActivity.class);
+        redirect.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         redirect.putExtra("user", username);
         redirect.putExtra("location", location);
         redirect.putExtra("room", room);
