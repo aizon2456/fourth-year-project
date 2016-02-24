@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">fourth-year-project-glass</string>
+    <string name="app_title">Chemical Audit</string>
+    <string name="title_activity_main">ActivityTitle</string>
+    <string name="hello_world">Hello world!</string>
+
+    <!-- All the names for voice commands-->
+    <string name="audit_start">Chemical Tracker</string>
+    <string name="report_view">View Report</string>
+</resources>
