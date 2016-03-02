@@ -6,12 +6,12 @@ import com.google.android.glass.view.WindowUtils;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.hardware.Camera;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -26,7 +26,7 @@ import java.util.ArrayList;
 /**
  * Main Activity.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity{
 
     private Preview mPreview = null;
     private SpeechRecognizer sr = null;
@@ -157,6 +157,7 @@ public class MainActivity extends Activity {
             }
 
         }).start();
+
     }
 
     public void setTextResponse(String text) {

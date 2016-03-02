@@ -62,9 +62,30 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 return true;
             }
             /**
+             * Perform the introduction
+             */
+            else if (regexCommand.contains("perform introduction")) {
+                converter.speak("Welcome to the Chemical Inventory Tracking System, created for the Google Glass.", TextToSpeech.QUEUE_FLUSH, null);
+                converter.speak("To activate your voice command system, tap on the Google Glass Touchpad once. You will hear a single click as the system activates.", TextToSpeech.QUEUE_ADD, null);
+                converter.speak("To acquire a list of commands, tap the touchpad once, and then say, 'list commands'.", TextToSpeech.QUEUE_ADD, null);
+                return true;
+            }
+            /**
+             * List commands TODO: switch over to the Java.Command system and then "for each" the commands instead of hardcoding them
+             */
+            else if (regexCommand.contains("list commands")) {
+                converter.speak("To cancel voice commands once active, say 'cancel' or 'reset'.", TextToSpeech.QUEUE_FLUSH, null);
+                converter.speak("To begin an audit or inventory check, say 'start audit' or 'begin inventory'.", TextToSpeech.QUEUE_ADD, null);
+                converter.speak("To change your location, say 'change location'.", TextToSpeech.QUEUE_ADD, null);
+                converter.speak("To change your room, say 'select room'.", TextToSpeech.QUEUE_ADD, null);
+                converter.speak("When opening a cabinet, say 'open cabinet'.", TextToSpeech.QUEUE_ADD, null);
+                converter.speak("To be informed as to your current settings, say 'status please'. The please is very important.", TextToSpeech.QUEUE_ADD, null);
+                return true;
+            }
+            /**
              * Expecting a response = handle
              */
-            if (responseType != null) {
+            else if (responseType != null) {
                 if (handleResponse(regexCommand)) {
                     // TODO: handle this differently
                     MainActivity.playTapSound();
@@ -98,7 +119,9 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 responseType = RESPONSE_TYPES.IDENTIFY;
                 return true;
             }
-            // location
+            /**
+             * Change Location = change the current location, then prompt for a room change
+             */
             else if (regexCommand.contains("change location")) {
                 // allow the user to say the location name
                 converter.speak("Please say your location now.", TextToSpeech.QUEUE_FLUSH, null);
@@ -106,7 +129,9 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 responseType = RESPONSE_TYPES.LOCATION;
                 return true;
             }
-            // room
+            /**
+             * Select Room = attempt to select the current room
+             */
             else if (regexCommand.contains("select room")) {
                 // if there is no location identified, prioritize getting that value first
                 if (currentLocation == null) {
@@ -120,7 +145,9 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 responseType = RESPONSE_TYPES.ROOM;
                 return true;
             }
-            // cabinet
+            /**
+             * Cabinet = attempt to open a cabinet
+             */
             else if (regexCommand.contains("open cabinet")) {
                 // if there is no location identified, prioritize getting that value first
                 if (currentLocation == null) {
@@ -142,11 +169,21 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 return true;
             }
             /**
+             * Status = Retrieve all current parameters' statuses
+             */
+            else if (regexCommand.contains("status")) {
+                converter.speak("Your location is " + ((currentLocation == null) ? "unspecified" : currentLocation), TextToSpeech.QUEUE_FLUSH, null);
+                converter.speak("Your room is " + ((currentRoom == null) ? "unspecified" : currentRoom), TextToSpeech.QUEUE_ADD, null);
+                converter.speak("The cabinet you have open is " + ((currentCabinet == null) ? "unspecified" : currentCabinet), TextToSpeech.QUEUE_ADD, null);
+                converter.speak("The last chemical you have scanned is " + ((currentChemical == null) ? "unspecified" : currentChemical), TextToSpeech.QUEUE_ADD, null);
+                return true;
+            }
+            /**
              * Audit/Inventory = Start the process
              */
             else if (regexCommand.contains("audit") || regexCommand.contains("inventory")) {
                 // allow the user to say the location name
-                converter.speak("Welcome to the Please say your location now.", TextToSpeech.QUEUE_FLUSH, null);
+                converter.speak("Let's begin by identifying your current location. Please say your location now.", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = true;
                 responseType = RESPONSE_TYPES.LOCATION;
                 return true;
@@ -155,8 +192,11 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         return false;
     }
 
-    // lcCommand is the lower case command
-    // return true if the response was handled correctly
+    /**
+     * Handles a response to a prompt from the voice command system.
+     * @param lcCommand The lower case voice command that was uttered
+     * @return True if the response was handled correctly
+     */
     private boolean handleResponse(String lcCommand) {
         // previous command was identify, now handle the response
         if (responseType == RESPONSE_TYPES.IDENTIFY) {
@@ -165,8 +205,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                     return performDBAdd(currentChemical);
                 }
                 else {
-                    converter.speak("No container currently identified, please try again.", TextToSpeech.QUEUE_FLUSH, null);
-                    keepListening = true;
+                    converter.speak("There was an error adding your chemical to the database.", TextToSpeech.QUEUE_FLUSH, null);
                     responseType = null;
                     return true;
                 }
@@ -191,6 +230,13 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         // the user was asked for the current location
         else if (responseType == RESPONSE_TYPES.LOCATION) {
             if (lcCommand != null) {
+                // add the location to the database or fail immediately
+                if (!db.setGeoVariable(DatabaseConnection.GEO_VAR.LOCATION, lcCommand)) {
+                    Log.i("TextToSpeech", "There was an error setting the location to " + lcCommand + ".");
+                    converter.speak("There was an error setting the location. Your request could not be completed.", TextToSpeech.QUEUE_FLUSH, null);
+                    responseType = null;
+                    return false;
+                }
                 currentLocation = lcCommand;
                 currentRoom = null;
 
@@ -208,6 +254,13 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         // the user was asked for the current room
         else if (responseType == RESPONSE_TYPES.ROOM) {
             if (lcCommand != null) {
+                // add the room to the database or fail immediately
+                if (!db.setGeoVariable(DatabaseConnection.GEO_VAR.ROOM, lcCommand)) {
+                    Log.i("TextToSpeech", "There was an error setting the room to " + lcCommand + ".");
+                    converter.speak("There was an error setting the room. Your request could not be completed.", TextToSpeech.QUEUE_FLUSH, null);
+                    responseType = null;
+                    return false;
+                }
                 currentRoom = lcCommand;
                 responseType = null;
                 return true;
@@ -219,6 +272,13 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         // the user was asked for the current location
         else if (responseType == RESPONSE_TYPES.CABINET) {
             if (lcCommand != null) {
+                // add the cabinet to the database or fail immediately
+                if (!db.setGeoVariable(DatabaseConnection.GEO_VAR.CABINET, lcCommand)) {
+                    Log.i("TextToSpeech", "There was an error setting the cabinet to " + lcCommand + ".");
+                    converter.speak("There was an error setting the cabinet. Your request could not be completed.", TextToSpeech.QUEUE_FLUSH, null);
+                    responseType = null;
+                    return false;
+                }
                 currentCabinet = lcCommand;
                 responseType = null;
                 return true;
@@ -243,7 +303,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
 
         currentChemical = lcCommand;
 
-        // TODO: database add new container (need to not hardcode the inputs)
+        // database add new container
         if (!db.createContainer(currentLocation, currentRoom, currentCabinet, currentChemical)) {
             Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
             converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
