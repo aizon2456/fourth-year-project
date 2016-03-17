@@ -1,7 +1,6 @@
 package wong.ian.augmentedrealitysystem20;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.Camera;
@@ -29,14 +28,15 @@ import java.util.List;
 public class MainActivity extends Activity {
     private SimpleScreen screen = null;
     private Camera mCamera = null;
-    private Preview mPreview = null;
+    private static Preview mPreview = null;
 
     private static SyncInt syncVal = null;
-    private ProgressBar progressBar = null;
+//    private ProgressBar progressBar = null;
     private SpeechRecognizer sr = null;
     private boolean recording = false;
     private boolean screenActive = true;
     private SpeechIdentifier identifier = null;
+    private static TesseractEngine tesseract = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,12 +49,12 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.main_layout);
 
-        // create the speech identifier given a particular location and room
-        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"));
+        // create the tesseract to be used for image recognition
+        tesseract = new TesseractEngine(getBaseContext(), getAssets());
 
         FrameLayout layout = (FrameLayout) findViewById(R.id.systemFrame);
         if (layout != null) {
-            mPreview = new Preview(getBaseContext());
+            mPreview = new Preview(getBaseContext(), tesseract);
             layout.addView(mPreview,0);
         }
 
@@ -63,62 +63,65 @@ public class MainActivity extends Activity {
             mPreview.setCamera(mCamera);
         }
 
+        // create the speech identifier given a particular location and room
+        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"), mPreview);
+
         syncVal = new SyncInt(100);
-        progressBar = (ProgressBar) findViewById(R.id.progressBar);
+//        progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         screen = (SimpleScreen)findViewById(R.id.my_screen);
         screen.setOnTouchListener(new TouchListener());
 
         // the thread for displaying the progress of digital image processing
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    // thread synchronization
-                    int syncValue;
-                    synchronized (syncVal) {
-                        syncValue = syncVal.getValue();
-
-                        int progressBarValue = progressBar.getProgress();
-
-                        // check for 0<=x<=100 (valid percentages)
-                        if (syncValue != progressBarValue && syncValue > 0 && syncValue <= 100) {
-                            Log.d("sync", syncValue + ", " + progressBarValue);
-                            if (progressBarValue >= 100) {
-                                progressBarValue = -1;
-                            }
-                            progressBar.setProgress(progressBarValue + 1);
-                        }
-                    }
-
-                    // update the UI in the main thread
-                    if (syncValue < 100) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                progressBar.setVisibility(View.VISIBLE);
-                                progressBar.bringToFront();
-                            }
-                        });
-                    }
-                    else {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                progressBar.setVisibility(View.INVISIBLE);
-                            }
-                        });
-                    }
-
-                    // sleep for a designated period of time before reading any more containers
-                    try {
-                        Thread.sleep(20);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                while (true) {
+//                    // thread synchronization
+//                    int syncValue;
+//                    synchronized (syncVal) {
+//                        syncValue = syncVal.getValue();
+//
+//                        int progressBarValue = progressBar.getProgress();
+//
+//                        // check for 0<=x<=100 (valid percentages)
+//                        if (syncValue != progressBarValue && syncValue > 0 && syncValue <= 100) {
+//                            Log.d("sync", syncValue + ", " + progressBarValue);
+//                            if (progressBarValue >= 100) {
+//                                progressBarValue = -1;
+//                            }
+//                            progressBar.setProgress(progressBarValue + 1);
+//                        }
+//                    }
+//
+//                    // update the UI in the main thread
+//                    if (syncValue < 100) {
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                progressBar.setVisibility(View.VISIBLE);
+//                                progressBar.bringToFront();
+//                            }
+//                        });
+//                    }
+//                    else {
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                progressBar.setVisibility(View.INVISIBLE);
+//                            }
+//                        });
+//                    }
+//
+//                    // sleep for a designated period of time before reading any more containers
+//                    try {
+//                        Thread.sleep(20);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//        }).start();
 
         sr = SpeechRecognizer.createSpeechRecognizer(getBaseContext());
         sr.setRecognitionListener(new RecognitionListener() {
@@ -356,10 +359,6 @@ public class MainActivity extends Activity {
                 btn.setImageResource(R.mipmap.pause_button);
             }
         }
-    }
-
-    public static SyncInt getSyncVal() {
-        return syncVal;
     }
 
     @Override

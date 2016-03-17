@@ -26,6 +26,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
     private static String currentLocation = null;
     private static String currentRoom = null;
     private static String currentCabinet = null;
+    private static Preview mPreview = null;
 
     /**
       * The map of commands to resulting methods.
@@ -58,11 +59,12 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         IDENTIFY, CHEMICAL_NAME, LOCATION, ROOM, CABINET
     }
 
-    public SpeechIdentifier(Context context, String location, String room) {
+    public SpeechIdentifier(Context context, String location, String room, Preview mPreview) {
         currentLocation = location;
         currentRoom = room;
         db = DatabaseConnection.getInstance();
         converter = new TextToSpeech(context, this);
+        this.mPreview = mPreview;
     }
 
     /**
@@ -117,7 +119,17 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                     return true;
                 }
 
-                // TODO: use the DIP to get the name of the chemical
+                // Use the DIP to get the name of the chemical
+                mPreview.takePicture();
+                String line;
+                while (mPreview.getStringResults() == null) {
+                    Log.v("Wait", "Waiting on results from camera.");
+                }
+                line = mPreview.getStringResults();
+                String[] possibilities = line.split("\n");
+                for (int i = 0; i < possibilities.length; i++) {
+                    Log.i("DIPEntry", "Entry " + (i+1) + ": " + possibilities[i]);
+                }
                 currentChemical = "water";
 
                 converter.speak("Is your chemical: " + currentChemical + "?", TextToSpeech.QUEUE_FLUSH, null);

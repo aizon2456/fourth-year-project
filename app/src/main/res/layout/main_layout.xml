@@ -38,12 +38,12 @@
             android:divider="@null" />
     </LinearLayout>
 
-    <ProgressBar
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="210dp"
-        android:layout_height="15dp"
-        android:id="@+id/progressBar"
-        android:layout_gravity="center_horizontal|bottom" />
+    <!--<ProgressBar-->
+        <!--style="?android:attr/progressBarStyleHorizontal"-->
+        <!--android:layout_width="210dp"-->
+        <!--android:layout_height="15dp"-->
+        <!--android:id="@+id/progressBar"-->
+        <!--android:layout_gravity="center_horizontal|bottom" />-->
 
     <LinearLayout
         android:orientation="horizontal"

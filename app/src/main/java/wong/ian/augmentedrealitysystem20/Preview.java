@@ -1,23 +1,59 @@
 package wong.ian.augmentedrealitysystem20;
 
-import android.app.Activity;
 import android.content.Context;
 import android.hardware.Camera;
+import android.hardware.Camera.PictureCallback;
+import android.hardware.Camera.ShutterCallback;
 import android.util.Log;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.io.File;
 import java.io.IOException;
 
 public class Preview extends SurfaceView implements SurfaceHolder.Callback {
 
-    SurfaceHolder mHolder;
-    Camera mCamera = null;
+    private SurfaceHolder mHolder;
+    private Camera mCamera = null;
+    private String imagePath = null;
+    private TesseractEngine tesseract = null;
+    private String stringResults = null;
 
+    private PictureCallback mPicture = new PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] data, Camera camera) {
+            File pictureFile = new File(imagePath);
+            Log.i("FileLocation", "File will be saved to: " + imagePath);
+            if (pictureFile == null) {
+                Log.e("FileLocation", "Error setting image file location to: " + imagePath);
+                return;
+            }
+            try {
+                stringResults = tesseract.onPhotoTaken(data);
+            } catch (Exception e) {
+                Log.e("FileParsing", e.getMessage());
+            }
+            finally {
+                mCamera.stopPreview();
+                mCamera.startPreview();
+            }
+        }
+    };
 
-    public Preview(Context context) {
+    private ShutterCallback mShutter = new ShutterCallback(){
+        @Override
+        public void onShutter() {Log.i("Callback", "Shutter Callback triggered.");}
+    };
+
+    PictureCallback mPictureRaw = new PictureCallback(){
+        @Override
+        public void onPictureTaken(byte[] arg0, Camera arg1) {Log.i("Callback", "Raw Picture Callback triggered.");}
+    };
+
+    public Preview(Context context, TesseractEngine tesseract) {
         super(context);
+
+        this.tesseract = tesseract;
 
         mHolder = getHolder();
         mHolder.addCallback(this);
@@ -93,5 +129,22 @@ public class Preview extends SurfaceView implements SurfaceHolder.Callback {
 
             surfaceChanged(null, 0, 0, 0);
         }
+    }
+
+    public void takePicture() {
+        mCamera.lock();
+        this.imagePath = tesseract.getImagePath();
+        Log.d("Deleting File", Boolean.toString(new File(imagePath).delete()));
+        mCamera.takePicture(mShutter, mPictureRaw, mPicture);
+        Log.i("TakePicture", "Picture taken. Processing...");
+        try {
+            mCamera.reconnect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getStringResults() {
+        return stringResults;
     }
 }
