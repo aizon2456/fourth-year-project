@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import android.content.Context;
 import android.content.res.AssetManager;
@@ -17,6 +19,7 @@ import com.googlecode.tesseract.android.TessBaseAPI;
 
 public class TesseractEngine {
     private static String DATA_PATH;
+    private static final String TESSERACT_PATH = "tessdata/";
 
     // You should have the trained data file in assets folder
     // You can get them at:
@@ -29,23 +32,26 @@ public class TesseractEngine {
 
     public TesseractEngine(Context context, AssetManager assets) {
 
-        DATA_PATH = context.getFilesDir().getAbsolutePath();
+        DATA_PATH = context.getFilesDir().getAbsolutePath() + "/";
 
         Log.i("test", "filename: " + DATA_PATH);
 
         AssetManager assetManager = assets;
 
-        String[] paths = new String[] { DATA_PATH, DATA_PATH + "tessdata/" };
+        String[] paths = new String[] { DATA_PATH, DATA_PATH + TESSERACT_PATH};
 
         for (String path : paths) {
             File dir = new File(path);
             if (!dir.exists()) {
                 if (!dir.mkdirs()) {
-                    Log.v(TAG, "ERROR: Creation of directory " + path + " on sdcard failed");
+                    Log.i(TAG, "ERROR: Creation of directory " + path + " failed!");
                     return;
                 } else {
-                    Log.v(TAG, "Created directory " + path + " on sdcard");
+                    Log.i(TAG, "Created directory " + path + " successfully!");
                 }
+            }
+            else {
+                Log.i(TAG, "Directory " + path + " already exists!");
             }
         }
 
@@ -53,12 +59,12 @@ public class TesseractEngine {
         // You can get them at:
         // http://code.google.com/p/tesseract-ocr/downloads/list
         // This area needs work and optimization
-        if (!(new File(DATA_PATH + "tessdata/" + lang + ".traineddata")).exists()) {
+        if (!(new File(DATA_PATH + TESSERACT_PATH + lang + ".traineddata")).exists()) {
             try {
-                InputStream in = assetManager.open("tessdata/" + lang + ".traineddata");
+                InputStream in = assetManager.open(TESSERACT_PATH + lang + ".traineddata");
                 //GZIPInputStream gin = new GZIPInputStream(in);
                 OutputStream out = new FileOutputStream(DATA_PATH
-                        + "tessdata/" + lang + ".traineddata");
+                        + TESSERACT_PATH + lang + ".traineddata");
 
                 // Transfer bytes from in to out
                 byte[] buf = new byte[1024];
@@ -120,12 +126,13 @@ public class TesseractEngine {
 //                    break;
 //            }
 
-            // get rotation using Exif
-            rotate = Exif.getOrientation(data);
+            // hard-coded to 90 degrees (portrait)
+            //rotate = Exif.getOrientation(data);
+            rotate = 90;
 
             Log.v(TAG, "Rotation: " + rotate);
 
-            if (rotate != 0) {
+            //if (rotate != 0) {
 
                 // Getting width & height of the given image.
                 int w = bitmap.getWidth();
@@ -137,7 +144,7 @@ public class TesseractEngine {
 
                 // Rotating Bitmap
                 bitmap = Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, false);
-            }
+            //}
 
             // Convert to ARGB_8888, required by tess
             bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
@@ -169,14 +176,25 @@ public class TesseractEngine {
             recognizedText = recognizedText.replaceAll("[^a-zA-Z0-9]+", " ");
         }
 
-        Log.d("OCRText", "Text: " + recognizedText.trim());
+        // parse the results by length and content
+        Log.d("OCRED_Text", "OCR text results: " + recognizedText.trim());
+        String[] values = recognizedText.trim().split(" ");
+        ArrayList<String> dipResults = new ArrayList<>();
+        for (String option : values) {
+            // if the length is 5 or more, add it to the list of results to check
+            if (option.length() >= 3) {
+                dipResults.add(option.toLowerCase());
+            }
+        }
 
-        return recognizedText.trim();
+        String[] spaceDelimArray = dipResults.toArray(new String[dipResults.size()]);
+
+        Log.d(TAG, "OCRED RESULTS: " + Arrays.toString(spaceDelimArray));
+
+        // get instance of the database and query the name
+        DatabaseConnection db = DatabaseConnection.getInstance();
+        return db.queryChemicals(spaceDelimArray);
 
         // Cycle done.
-    }
-
-    public String getImagePath() {
-        return _path;
     }
 }

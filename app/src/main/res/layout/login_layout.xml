@@ -56,5 +56,6 @@
         android:textStyle="bold"
         android:gravity="center"
         android:layout_above="@+id/imageView"
-        android:layout_centerHorizontal="true" />
+        android:layout_centerHorizontal="true"
+        android:textColor="@android:color/black" />
 </RelativeLayout>

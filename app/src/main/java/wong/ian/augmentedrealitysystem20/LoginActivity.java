@@ -21,6 +21,7 @@ import android.widget.TextView;
 public class LoginActivity extends Activity {
 
     private final String USERNAME = "username";
+    private final String AUTH = "auth";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +90,7 @@ public class LoginActivity extends Activity {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         if (sp.contains(USERNAME)) {
             displayUsername = sp.getString(USERNAME, "ERROR");
+            DatabaseConnection.getInstance().setLoginProperty(sp.getString(AUTH, "ERROR"));
             Log.i("TokenExists", "Already logged in as " + displayUsername + ", continuing...");
         }
         // since the UI can never submit null for field values, this comes from the onCreate() and is thus returned
@@ -119,6 +121,7 @@ public class LoginActivity extends Activity {
             // set the shared preferences to state that [USERNAME] is logged in
             SharedPreferences.Editor editor = sp.edit();
             editor.putString(USERNAME, username);
+            editor.putString(AUTH, DatabaseConnection.getInstance().getLoginProperty());
             editor.commit();
 
             displayUsername = username;

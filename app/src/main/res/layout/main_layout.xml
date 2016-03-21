@@ -54,11 +54,9 @@
         <ImageButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/pausePlayButton"
+            android:id="@+id/scanButton"
             android:layout_gravity="right|bottom"
-            android:src="@mipmap/pause_button"
-            android:background="@null"
-            android:onClick="pausePlayScreen" />
+            android:src="@mipmap/camera_activate" />
 
         <ImageButton
             android:layout_width="wrap_content"

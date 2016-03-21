@@ -3,6 +3,7 @@ package wong.ian.augmentedrealitysystem20;
 import android.util.Base64;
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -34,38 +35,35 @@ public class DatabaseConnection {
     // Single-thread, singleton database executor to ensure database integrity
     private ExecutorService executor = null;
 
+    // Enumeration with all types of geovariable options
+    public enum GEO_VAR {
+        LOCATION, ROOM, CABINET
+    }
+
     private DatabaseConnection() {
         executor = Executors.newSingleThreadExecutor();
+        currentContainer = new ChemicalContainer();
     }
 
     // singleton accessor
     public static DatabaseConnection getInstance() {
-        if (singleInstance != null) {
-            return singleInstance;
+        if (singleInstance == null) {
+            singleInstance = new DatabaseConnection();
         }
-        return new DatabaseConnection();
+        return singleInstance;
     }
 
     /**
-     * Create a new Container based on a location, room, cabinet, and chemical name.
-     * @param location
-     * @param room
-     * @param cabinet
-     * @param chemicalName
+     * Send the container to the database.
      * @return
      */
-    public boolean createContainer(String location, String room, String cabinet, String chemicalName) {
+    public boolean createDBContainer() {
         // if the chemical was not validated ahead of time, the container will be null
         if (currentContainer == null) {
             return false;
         }
 
-        currentContainer.setCabinet(cabinet);
-        currentContainer.setChemicalName(chemicalName);
-        currentContainer.setLocation(location);
-        currentContainer.setRoom(room);
-
-        JSONObject response = modifyContainer(true);
+        JSONObject response = modifyChemical(true);
 
         // if no response was acquired, then log an error
         if (response == null) {
@@ -96,11 +94,98 @@ public class DatabaseConnection {
     }
 
     /**
-     * Creates the JSON to modify or add an existing container in the database.
+     * Sets the current location,  by creating the JSON required for the addition or removal.
+     * @param type The particular variable to update
+     * @param value The new value
+     * @return True if successful, false if not
+     */
+    public boolean setGeoVariable(GEO_VAR type, String value) {
+        if (currentContainer == null) {
+            Log.e("DatabaseAccess", "The currently identified container is empty.");
+            return false;
+        }
+        else if (value == null) {
+            Log.e("DatabaseAccess", "The variable identified is null.");
+            return false;
+        }
+        else if (type == null) {
+            Log.e("DatabaseAccess", "The type is null.");
+            return false;
+        }
+
+        JSONObject updateObj = new JSONObject();
+
+        try {
+            updateObj.put("request", "ADD"); // add
+
+            /**
+             * Create a cascading JSONObject parameter creator, and simultaneously update
+             * the DatabaseConnection local variable with the new value.
+             *
+             *  -> Add Location (stop if type is location)
+             *      -> Add Room (stop if type is room)
+             *          -> Add Cabinet (stop if type is cabinet)
+             */
+            // check if location
+            if (type == GEO_VAR.LOCATION) {
+                updateObj.put("location", value);
+                currentContainer.setLocation(value);
+            }
+            else {
+                updateObj.put("location", currentContainer.getLocation());
+
+                // check if room
+                if (type == GEO_VAR.ROOM) {
+                    updateObj.put("room", value);
+                    currentContainer.setRoom(value);
+                }
+                else {
+                    updateObj.put("room", currentContainer.getRoom());
+
+                    // check if cabinet
+                    if (type == GEO_VAR.CABINET) {
+                        updateObj.put("cabinet", value);
+                        currentContainer.setCabinet(value);
+                    }
+                    else {
+                        Log.e("DatabaseAccess", "There is an erroneous type in use: " + type.name());
+                        return false;
+                    }
+                }
+            }
+
+            // passes the JSONObject and the URL path for the operation
+            JSONObject response = performDBOperation(updateObj, type.name().toLowerCase());
+
+            // check for success
+            if (!response.getBoolean("success")) {
+                // acceptable error message (already exists in DB)
+                if ("STORAGE_ALREADY_EXISTS".equals(response.getString("status"))) {}
+                // TODO: identify specific problem messages
+                else{
+                    Log.i("DatabaseAccess", "Unsuccessful: " + response.getString("status") + ", " +
+                            response.getString("message"));
+                    return false;
+                }
+            }
+
+            // return that everything worked fine
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+        }
+
+        return false;
+    }
+
+    /**
+     * Creates the JSON to modify or add an existing chemical in the database.
      * @param isAddOperation True if the operation is Add, False if Remove
      * @return The result of the operation to parse
      */
-    public JSONObject modifyContainer(boolean isAddOperation) {
+    public JSONObject modifyChemical(boolean isAddOperation) {
         if (currentContainer == null) {
             Log.i("DatabaseAccess", "The currently identified container is empty.");
             return null;
@@ -109,13 +194,13 @@ public class DatabaseConnection {
         JSONObject updateObj = new JSONObject();
 
         try {
-            updateObj.put("requestType", (isAddOperation) ? "ADD" : "REMOVE"); // add or remove
+            updateObj.put("request", (isAddOperation) ? "ADD" : "REMOVE"); // add or remove
             updateObj.put("location", currentContainer.getLocation());
             updateObj.put("room", currentContainer.getRoom());
             updateObj.put("cabinet", currentContainer.getCabinet());
             updateObj.put("chemical", currentContainer.getChemicalName());
 
-            return performDBQuery(updateObj, true);
+            return performDBOperation(updateObj, "chemical");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -137,18 +222,16 @@ public class DatabaseConnection {
         try {
             queryObj.put("chemical", chemicalName);
 
-            JSONObject response = performDBQuery(queryObj, false);
+            JSONObject response = performDBOperation(queryObj);
 
             // if the chemical exists, then set the current container
             if (response != null && response.getBoolean("match")) {
                 JSONObject properties = response.getJSONObject("properties");
-                currentContainer = new ChemicalContainer(
-                        properties.getInt("flammability"),
-                        properties.getInt("health"),
-                        properties.getInt("instability"),
-                        properties.getString("notice"),
-                        response.getString("chemical")
-                );
+                currentContainer.setFlammability(properties.getInt("flammability"));
+                currentContainer.setHealth(properties.getInt("health"));
+                currentContainer.setInstability(properties.getInt("instability"));
+                currentContainer.setNotice(properties.getString("notice"));
+                currentContainer.setChemicalName(chemicalName);
                 return true;
             }
 
@@ -159,22 +242,75 @@ public class DatabaseConnection {
     }
 
     /**
+     * Checks if a list chemical names exist, and returns the first match
+     * @param chemicalNames
+     * @return True if the chemical exists in the database.
+     */
+    public String queryChemicals(String[] chemicalNames) {
+
+        JSONObject queryObj = new JSONObject();
+
+        try {
+            JSONArray chemicals = new JSONArray(chemicalNames);
+            queryObj.put("chemicals", chemicals);
+
+            JSONObject response = performDBOperation(queryObj, "partial");
+
+            Log.d("JSONReturn", "JSON:\n" + response.toString(2));
+
+            // if the chemical exists, then set the current container
+            if (response != null) {
+                JSONArray matches = response.getJSONArray("matches");
+                // return the first match in the array
+                return matches.getString(0);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
      * Execute the query given by the JSONObject parameter.
-     * @param body The JSONObject used to query or update
-     * @param isUpdate True if an update, False if a query operation
+     * @param body The JSONObject used to query
      * @return The response to the query from the database.
      */
-    private JSONObject performDBQuery(final JSONObject body, final boolean isUpdate) {
+    private JSONObject performDBOperation(final JSONObject body) {
+        return performDBOperation(body, null);
+    }
+
+    /**
+     * Execute the query or update given by the JSONObject parameter.
+     * @param body The JSONObject used to query or update
+     * @return The response to the query or update from the database.
+     */
+    private JSONObject performDBOperation(final JSONObject body, final String updateType) {
         // sets up a callable DB thread
         Callable<JSONObject> activeDBTask = new Callable<JSONObject>() {
             @Override
             public JSONObject call() throws Exception {
                 try {
+                    boolean isUpdate = updateType != null && !("partial").equals(updateType);
+
                     Log.d("DBCall", "Performing " + ((isUpdate) ? "an update" : "a query") + " operation...");
                     Log.d("JSONLOG-SentToDB", "JSON:\n" + body.toString(2));
 
                     // create the URL from the hardcoded URL
-                    URL url = new URL(dbURL + ((isUpdate) ? "update" : "query"));
+                    String urlString = dbURL;
+                    if (isUpdate) {
+                        urlString += "update/" + updateType;
+                    }
+                    else {
+                        if (("partial").equals(updateType)) {
+                            urlString += "partialQueries";
+                        }
+                        else {
+                            urlString += "query";
+                        }
+                    }
+                    URL url = new URL(urlString);
+
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestMethod("POST");
                     connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -208,7 +344,7 @@ public class DatabaseConnection {
                     }
 
                 } catch (Exception e) { // can catch timeouts
-                    e.printStackTrace();
+                    Log.d("JSONLOG-Error", "JSON: " + e.getMessage());
                 }
 
                 return null;
@@ -223,7 +359,7 @@ public class DatabaseConnection {
             JSONObject response = future.get();
             return response;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.d("FutureThread-Error", "Thread: " + e.getMessage());
         }
 
         return null;
@@ -253,6 +389,9 @@ public class DatabaseConnection {
                     OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());
                     writer.write("");
                     writer.flush();
+
+                    // log the response
+                    Log.d("LoginResponse", connection.getResponseMessage());
 
                     // get the response from the query if the database responded
                     if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
@@ -290,5 +429,13 @@ public class DatabaseConnection {
 
     public ChemicalContainer getCurrentContainer() {
         return currentContainer;
+    }
+
+    public String getLoginProperty() {
+        return loginProperty;
+    }
+
+    public void setLoginProperty(String loginProperty) {
+        this.loginProperty = loginProperty;
     }
 }

@@ -4,45 +4,51 @@ package wong.ian.augmentedrealitysystem20;
  * Contains all the information regarding a chemical container.
  */
 public class ChemicalContainer {
-    private String location = "";
-    private String room = "";
-    private String cabinet = "";
-    private String chemicalName = "";
+    private String location = null;
+    private String room = null;
+    private String cabinet = null;
+    private String chemicalName = null;
     private int flammability = 0;
     private int health = 0;
     private int instability = 0;
-    private String notice = "";
+    private String notice = null;
 
     /**
      * Creates a chemical container.
-     * @param flammability
-     * @param health
-     * @param instability
-     * @param notice Information pertinent to the chemical and the user.
-     * @param chemicalName
      */
-    public ChemicalContainer(int flammability, int health, int instability, String notice, String chemicalName) {
-        this.flammability = flammability;
-        this.health = health;
-        this.instability = instability;
-        this.notice = notice;
-        this.chemicalName = chemicalName;
+    public ChemicalContainer() {
     }
 
     public int getFlammability() {
         return flammability;
     }
 
+    public void setFlammability(int flammability) {
+        this.flammability = flammability;
+    }
+
     public int getHealth() {
         return health;
+    }
+
+    public void setHealth(int health) {
+        this.health = health;
     }
 
     public int getInstability() {
         return instability;
     }
 
+    public void setInstability(int instability) {
+        this.instability = instability;
+    }
+
     public String getNotice() {
         return notice;
+    }
+
+    public void setNotice(String notice) {
+        this.notice = notice;
     }
 
     public String getLocation() {

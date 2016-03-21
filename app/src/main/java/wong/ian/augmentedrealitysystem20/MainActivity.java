@@ -19,7 +19,6 @@ import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -29,12 +28,13 @@ public class MainActivity extends Activity {
     private SimpleScreen screen = null;
     private Camera mCamera = null;
     private static Preview mPreview = null;
+    private ArrayList<String> dipResults = null;
+    private boolean recording = false;
+    private boolean takingPicture = false;
 
-    private static SyncInt syncVal = null;
+//    private static SyncInt syncVal = null;
 //    private ProgressBar progressBar = null;
     private SpeechRecognizer sr = null;
-    private boolean recording = false;
-    private boolean screenActive = true;
     private SpeechIdentifier identifier = null;
     private static TesseractEngine tesseract = null;
 
@@ -52,21 +52,28 @@ public class MainActivity extends Activity {
         // create the tesseract to be used for image recognition
         tesseract = new TesseractEngine(getBaseContext(), getAssets());
 
+        mCamera = openCameraSafely();
         FrameLayout layout = (FrameLayout) findViewById(R.id.systemFrame);
-        if (layout != null) {
-            mPreview = new Preview(getBaseContext(), tesseract);
-            layout.addView(mPreview,0);
-        }
+        mPreview = new Preview(this, mCamera);
+        layout.addView(mPreview,0);
 
-        if (safeCameraOpen()) {
-            Log.d(getString(R.string.app_name), " opened Camera successfully!");
-            mPreview.setCamera(mCamera);
-        }
+        ImageButton scanButton = (ImageButton) findViewById(R.id.scanButton);
+        scanButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (takingPicture) {
+                    return;
+                }
+                takingPicture = true;
+                setTextResponse("Processing...", 8000);
+                mCamera.takePicture(null, null, pictureCallback);
+            }
+        });
 
         // create the speech identifier given a particular location and room
-        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"), mPreview);
+        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"));
 
-        syncVal = new SyncInt(100);
+//        syncVal = new SyncInt(100);
 //        progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         screen = (SimpleScreen)findViewById(R.id.my_screen);
@@ -164,8 +171,7 @@ public class MainActivity extends Activity {
                     b.setImageResource(R.mipmap.voice_recorder);
                     recording = false;
                     identifier.executeSpecificCommand("reset");
-                }
-                else {
+                } else {
                     Log.e("SpeechRecognizer", "Error: " + error);
                 }
             }
@@ -244,7 +250,41 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private Camera openCameraSafely(){
+        Camera mCamera = null;
+        try {
+            mCamera = Camera.open();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return mCamera;
+    }
+
+    Camera.PictureCallback pictureCallback = new Camera.PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] data, Camera camera) {
+            String result = null;
+
+            // check if a cabinet is opened
+            if (identifier.isCabinetOpen()) {
+                result = tesseract.onPhotoTaken(data);
+                Log.d("Tesseract", "Result: " + result);
+            }
+
+            // take the result and put it into the SpeechIdentifier
+            identifier.executeSpecificCommand("identify", result);
+
+            // restart the preview
+            mCamera.startPreview();
+            takingPicture = false;
+        }
+    };
+
     public void setTextResponse(String text) {
+        setTextResponse(text, 3000);
+    }
+
+    public void setTextResponse(String text, final int timeInMillis) {
         TextView textOutput = (TextView) findViewById(R.id.textArea);
         textOutput.setText(text);
         if (text.length() > 0) {
@@ -256,7 +296,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(timeInMillis);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     return;
@@ -315,67 +355,40 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void releaseCameraAndPreview() {
-        mPreview.setCamera(null);
-        if (mCamera != null) {
-            mCamera.release();
-            mCamera = null;
-        }
-    }
-
-    private boolean safeCameraOpen() {
-        boolean qOpened = false;
-
-        try {
-            releaseCameraAndPreview();
-            mCamera = Camera.open();
-            qOpened = (mCamera != null);
-        } catch (Exception e) {
-            Log.e(getString(R.string.app_name), "failed to open Camera");
-            e.printStackTrace();
-        }
-
-        return qOpened;
-    }
-
-    public void pausePlayScreen(View view) {
-        ImageButton btn = (ImageButton) findViewById(R.id.pausePlayButton);
-        // if active, make inactive
-        if (screenActive) {
-            mPreview.stopPreviewAndFreeCamera();
-            screenActive = false;
-
-            // change the display icon to play
-            btn.setImageResource(R.mipmap.play_button);
-        }
-        // else, make active
-        else {
-            if (safeCameraOpen()) {
-                Log.d(getString(R.string.app_name), " reopened Camera successfully!");
-                mPreview.setCamera(mCamera);
-                screenActive = true;
-
-                // change the display icon to pause
-                btn.setImageResource(R.mipmap.pause_button);
-            }
-        }
-    }
+//    public void pausePlayScreen(View view) {
+//        ImageButton btn = (ImageButton) findViewById(R.id.pausePlayButton);
+//        // if active, make inactive
+//        if (screenActive) {
+//            mPreview.stopPreviewAndFreeCamera();
+//            screenActive = false;
+//
+//            // change the display icon to play
+//            btn.setImageResource(R.mipmap.play_button);
+//        }
+//        // else, make active
+//        else {
+//            if (safeCameraOpen()) {
+//                Log.d(getString(R.string.app_name), " reopened Camera successfully!");
+//                mPreview.setCamera(mCamera);
+//                screenActive = true;
+//
+//                // change the display icon to pause
+//                btn.setImageResource(R.mipmap.pause_button);
+//            }
+//        }
+//    }
 
     @Override
     protected void onPause() {
         super.onPause();
         screen.onPause();
-        releaseCameraAndPreview();
+        //releaseCameraAndPreview();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         screen.onResume();
-        if (safeCameraOpen()) {
-            Log.d(getString(R.string.app_name), " re-opened Camera successfully!");
-            mPreview.setCamera(mCamera);
-        }
     }
 
     // disables the back button

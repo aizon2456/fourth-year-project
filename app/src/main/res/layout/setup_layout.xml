@@ -19,7 +19,8 @@
         android:background="@drawable/spinner_text"
         android:popupBackground="@drawable/spinner_dropdown_text"
         android:overlapAnchor="false"
-        android:layout_toStartOf="@+id/go_button" />
+        android:layout_toStartOf="@+id/go_button"
+        android:layout_alignEnd="@+id/go_button" />
 
     <Spinner
         android:layout_width="match_parent"

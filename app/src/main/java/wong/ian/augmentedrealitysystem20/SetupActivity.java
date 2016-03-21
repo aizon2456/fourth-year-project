@@ -44,6 +44,10 @@ public class SetupActivity extends Activity {
             put("Room 111", new String[] {"Narcotics Cabinet 1", "Cabinet 1"});
             put("Room 612", new String[] {"Fire Cabinet 1"});
         }});
+        areaMap.put("University Centre", new HashMap<String, String[]>(){{
+            put("Room 1", new String[] {"Narcotics Cabinet 1", "Cabinet 1"});
+            put("Atrium", new String[] {"Test Cabinet 1", "Test Cabinet 2"});
+        }});
 
         // location spinner
         Spinner locationSpinner = ((Spinner) findViewById(R.id.location_spinner));
