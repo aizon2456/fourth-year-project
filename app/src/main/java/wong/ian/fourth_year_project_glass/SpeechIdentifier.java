@@ -4,6 +4,7 @@ import android.content.Context;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 /**
@@ -15,10 +16,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
     private static TextToSpeech converter = null;
     private static RESPONSE_TYPES responseType = null;
     private static boolean keepListening = false;
-    private static String currentChemical = null;
-    private static String currentLocation = null;
-    private static String currentRoom = null;
-    private static String currentCabinet = null;
+    private static ChemicalContainer currentDBContainer = null;
 
     /**
      * List of responses that can be expected from the user.
@@ -27,12 +25,38 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         IDENTIFY, CHEMICAL_NAME, LOCATION, ROOM, CABINET
     }
 
-    public SpeechIdentifier(Context context, String location, String room) {
-        currentLocation = location;
-        currentRoom = room;
+    public SpeechIdentifier(Context context) {
         db = DatabaseConnection.getInstance();
         db.performLogin("kevin", "pass"); // TODO: do real authentication
         converter = new TextToSpeech(context, this);
+
+        currentDBContainer = db.getCurrentContainer();
+    }
+
+    /**
+     * Takes a string representation of a command and handle it.
+     * @param command
+     * @return True if the command was recognized and handled
+     */
+    public boolean executeSpecificCommand(String command, Object param) {
+        // always convert the command to lower case for regex matching
+        String regexCommand = command.toLowerCase();
+
+        /**
+         * Identify/Add Chemical = attempt to add the chemical to the database, and set the chemical
+         */
+        if (regexCommand.contains("identify") || regexCommand.contains("add chemical")) {
+            // set the current chemical if param is a string and not null
+            String chem;
+            if ((chem = (String)param) != null) {
+                currentDBContainer.setChemicalName(chem);
+            }
+            else {
+                currentDBContainer.setChemicalName(null);
+            }
+            return executeSpecificCommand(command);
+        }
+        return false;
     }
 
     /**
@@ -64,7 +88,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             /**
              * Perform the introduction
              */
-            else if (regexCommand.contains("perform introduction")) {
+            else if (regexCommand.contains("help")) {
                 converter.speak("Welcome to the Chemical Inventory Tracking System, created for the Google Glass.", TextToSpeech.QUEUE_FLUSH, null);
                 converter.speak("To activate your voice command system, tap on the Google Glass Touchpad once. You will hear a single click as the system activates.", TextToSpeech.QUEUE_ADD, null);
                 converter.speak("To acquire a list of commands, tap the touchpad once, and then say, 'list commands'.", TextToSpeech.QUEUE_ADD, null);
@@ -95,26 +119,32 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             /**
              * Identify/Add Chemical = attempt to add the chemical to the database
              */
-            else if (regexCommand.contains("identify") || regexCommand.contains("add chemical")) {
+            else if (regexCommand.contains("identify") || regexCommand.contains("scan")) {
                 // check that a location, room and cabinet have been identified
-                if (currentLocation == null) {
+                if (currentDBContainer.getLocation() == null) {
                     converter.speak("No location is currently identified, please say 'change location' before identify.", TextToSpeech.QUEUE_FLUSH, null);
                     return true;
                 }
-                else if (currentRoom == null) {
+                else if (currentDBContainer.getRoom() == null) {
                     converter.speak("No room is currently identified, please say 'select room' before identify.", TextToSpeech.QUEUE_FLUSH, null);
                     return true;
                 }
-                else if (currentCabinet == null) {
+                else if (currentDBContainer.getCabinet() == null) {
                     converter.speak("No cabinet is currently open. Please say 'open cabinet' to add chemicals, or cancel to stop using voice commands.", TextToSpeech.QUEUE_FLUSH, null);
                     keepListening = true;
                     return true;
                 }
 
-                // TODO: use the DIP to get the name of the chemical
-                currentChemical = "water";
+                // if currentChemical is null, force them to say the name of the chemical
+                if (currentDBContainer.getChemicalName() == null) {
+                    converter.speak("The chemical could not be identified. Please say the name of the chemical.", TextToSpeech.QUEUE_FLUSH, null);
+                    keepListening = true;
+                    responseType = RESPONSE_TYPES.CHEMICAL_NAME;
+                    return true;
+                }
 
-                converter.speak("Is your chemical: " + currentChemical + "?", TextToSpeech.QUEUE_FLUSH, null);
+                // currentChemical must already be identified by scanning, so check if their chemical exists
+                converter.speak("Is your chemical: " + currentDBContainer.getChemicalName() + "?", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = true;
                 responseType = RESPONSE_TYPES.IDENTIFY;
                 return true;
@@ -134,7 +164,7 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
              */
             else if (regexCommand.contains("select room")) {
                 // if there is no location identified, prioritize getting that value first
-                if (currentLocation == null) {
+                if (currentDBContainer.getLocation() == null) {
                     converter.speak("There is no location currently identified. Please specify a location before selecting a room.", TextToSpeech.QUEUE_FLUSH, null);
                     return true;
                 }
@@ -148,15 +178,15 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
             /**
              * Cabinet = attempt to open a cabinet
              */
-            else if (regexCommand.contains("open cabinet")) {
+            else if (regexCommand.contains("open cabinet") || regexCommand.contains("change cabinet")) {
                 // if there is no location identified, prioritize getting that value first
-                if (currentLocation == null) {
+                if (currentDBContainer.getLocation() == null) {
                     converter.speak("There is no location currently identified. Please specify a location before selecting a room.", TextToSpeech.QUEUE_FLUSH, null);
                     return true;
                 }
 
                 // if there is no room identified, prioritize getting that value first
-                if (currentRoom == null) {
+                if (currentDBContainer.getRoom() == null) {
                     converter.speak("There is no room currently identified. Please say 'select room' to choose a room now.", TextToSpeech.QUEUE_FLUSH, null);
                     keepListening = true;
                     return true;
@@ -172,10 +202,10 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
              * Status = Retrieve all current parameters' statuses
              */
             else if (regexCommand.contains("status")) {
-                converter.speak("Your location is " + ((currentLocation == null) ? "unspecified" : currentLocation), TextToSpeech.QUEUE_FLUSH, null);
-                converter.speak("Your room is " + ((currentRoom == null) ? "unspecified" : currentRoom), TextToSpeech.QUEUE_ADD, null);
-                converter.speak("The cabinet you have open is " + ((currentCabinet == null) ? "unspecified" : currentCabinet), TextToSpeech.QUEUE_ADD, null);
-                converter.speak("The last chemical you have scanned is " + ((currentChemical == null) ? "unspecified" : currentChemical), TextToSpeech.QUEUE_ADD, null);
+                converter.speak("Your location is " + ((currentDBContainer.getLocation() == null) ? "unspecified" : currentDBContainer.getLocation()), TextToSpeech.QUEUE_FLUSH, null);
+                converter.speak("Your room is " + ((currentDBContainer.getRoom() == null) ? "unspecified" : currentDBContainer.getRoom()), TextToSpeech.QUEUE_ADD, null);
+                converter.speak("The cabinet you have open is " + ((currentDBContainer.getCabinet() == null) ? "unspecified" : currentDBContainer.getCabinet()), TextToSpeech.QUEUE_ADD, null);
+                converter.speak("The last chemical you have scanned is " + ((currentDBContainer.getChemicalName() == null) ? "unspecified" : currentDBContainer.getChemicalName()), TextToSpeech.QUEUE_ADD, null);
                 return true;
             }
             /**
@@ -201,8 +231,8 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         // previous command was identify, now handle the response
         if (responseType == RESPONSE_TYPES.IDENTIFY) {
             if ("yes".equals(lcCommand)) {
-                if (currentChemical != null) {
-                    return performDBAdd(currentChemical);
+                if (currentDBContainer.getChemicalName() != null) {
+                    return performDBAdd(currentDBContainer.getChemicalName());
                 }
                 else {
                     converter.speak("There was an error adding your chemical to the database.", TextToSpeech.QUEUE_FLUSH, null);
@@ -214,7 +244,6 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                 converter.speak("Please say the name of the chemical.", TextToSpeech.QUEUE_FLUSH, null);
                 keepListening = true;
                 responseType = RESPONSE_TYPES.CHEMICAL_NAME;
-                currentChemical = null;
                 return true;
             }
             else {
@@ -225,6 +254,21 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         }
         // the user was asked for the proper chemical to be added to the database
         else if (responseType == RESPONSE_TYPES.CHEMICAL_NAME) {
+            // check that a location, room and cabinet have been identified
+            if (currentDBContainer.getLocation() == null) {
+                converter.speak("No location is currently identified, please say 'change location' before identify.", TextToSpeech.QUEUE_FLUSH, null);
+                return true;
+            }
+            else if (currentDBContainer.getRoom() == null) {
+                converter.speak("No room is currently identified, please say 'select room' before identify.", TextToSpeech.QUEUE_FLUSH, null);
+                return true;
+            }
+            else if (currentDBContainer.getCabinet() == null) {
+                converter.speak("No cabinet is currently open. Please say 'open cabinet' to add chemicals, or cancel to stop using voice commands.", TextToSpeech.QUEUE_FLUSH, null);
+                keepListening = true;
+                return true;
+            }
+
             return performDBAdd(lcCommand);
         }
         // the user was asked for the current location
@@ -237,8 +281,6 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                     responseType = null;
                     return false;
                 }
-                currentLocation = lcCommand;
-                currentRoom = null;
 
                 // allow the user to say the room name
                 converter.speak("Please say the room name now.", TextToSpeech.QUEUE_FLUSH, null);
@@ -261,7 +303,6 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                     responseType = null;
                     return false;
                 }
-                currentRoom = lcCommand;
                 responseType = null;
                 return true;
             }
@@ -279,7 +320,6 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
                     responseType = null;
                     return false;
                 }
-                currentCabinet = lcCommand;
                 responseType = null;
                 return true;
             }
@@ -291,27 +331,50 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         return false;
     }
 
-    private boolean performDBAdd(String lcCommand) {
-        if (!db.queryChemical(lcCommand)) {
-            Log.i("TextToSpeech", "There is no such chemical " + lcCommand + " in the database.");
-            converter.speak("There is no chemical " + lcCommand + " in the database. Please say the name of the chemical you wish to add.", TextToSpeech.QUEUE_FLUSH, null);
+    private boolean performDBAdd(String chemicalName) {
+        if (!db.queryChemical(chemicalName)) {
+            Log.i("TextToSpeech", "There is no chemical " + chemicalName + " in the database.");
+            converter.speak("There is no chemical " + chemicalName + " in the database. Please say the name of the chemical you wish to add.", TextToSpeech.QUEUE_FLUSH, null);
             keepListening = true;
             responseType = RESPONSE_TYPES.CHEMICAL_NAME;
-            currentChemical = null;
             return false;
         }
 
-        currentChemical = lcCommand;
-
         // database add new container
-        if (!db.createContainer(currentLocation, currentRoom, currentCabinet, currentChemical)) {
-            Log.e("TextToSpeech", "There was an error adding " + currentChemical + " to the database.");
-            converter.speak("Chemical " + currentChemical + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
+        if (!db.createDBContainer()) {
+            Log.e("TextToSpeech", "There was an error adding " + currentDBContainer.getChemicalName() + " to the database.");
+            converter.speak("Chemical " + currentDBContainer.getChemicalName() + " could not be added to the database.", TextToSpeech.QUEUE_FLUSH, null);
             responseType = null;
             return false;
         }
-        Log.i("TextToSpeech", "Chemical " + currentChemical + " added to the database.");
-        converter.speak("Added " + currentChemical + " successfully.", TextToSpeech.QUEUE_FLUSH, null);
+        Log.i("TextToSpeech", "Chemical " + currentDBContainer.getChemicalName() + " added to the database.");
+        converter.speak("Added " + currentDBContainer.getChemicalName() + " successfully.", TextToSpeech.QUEUE_FLUSH, null);
+        if (currentDBContainer.getFlammability() > 0 || currentDBContainer.getHealth() > 0 || currentDBContainer.getInstability() > 0) {
+            String message = chemicalName + " is ";
+            ArrayList<String> additionalMessages = new ArrayList<>();
+            if (currentDBContainer.getFlammability() > 0) {
+                additionalMessages.add(" flammable  ");
+            }
+            if (currentDBContainer.getHealth() > 0) {
+                additionalMessages.add(" hazardous to humans  ");
+            }
+            if (currentDBContainer.getInstability() > 0) {
+                additionalMessages.add(" unstable  ");
+            }
+
+            for (int i = 0; i < additionalMessages.size(); i++) {
+                // if not an array of size 2+, then ignore adding an "and"
+                if (additionalMessages.size() >= 2) {
+                    // if at max index, add "and"
+                    if (i == (additionalMessages.size() - 1)) {
+                        message += " and ";
+                    }
+                }
+                message += additionalMessages.get(i);
+            }
+
+            converter.speak(message, TextToSpeech.QUEUE_ADD, null);
+        }
 
         responseType = null;
         return true;
@@ -344,5 +407,9 @@ public class SpeechIdentifier implements TextToSpeech.OnInitListener {
         else {
             return false;
         }
+    }
+
+    public boolean isCabinetOpen() {
+        return currentDBContainer.getCabinet() != null;
     }
 }

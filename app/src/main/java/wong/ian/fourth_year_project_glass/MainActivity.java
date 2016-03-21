@@ -44,7 +44,7 @@ public class MainActivity extends Activity{
         audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         // create the speech identifier given a particular location and room
-        identifier = new SpeechIdentifier(this, getIntent().getStringExtra("location"), getIntent().getStringExtra("room"));
+        identifier = new SpeechIdentifier(this);
 
         RelativeLayout layout = (RelativeLayout) findViewById(R.id.main_area);
         if (layout != null) {
